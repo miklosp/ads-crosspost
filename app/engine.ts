@@ -1,6 +1,7 @@
 // utilityProcess entry: makes sure patchright's Chromium is in PLAYWRIGHT_BROWSERS_PATH (set by main to app
 // data), then runs the job engine and MCP server from src/. Under plain node (no parentPort) messages go to stderr.
 import { browserManager } from "../src/browsers.ts";
+import { loadConfig, saveConfig, settings, type Settings } from "../src/config.ts";
 import { ensureChromium } from "../src/install.ts";
 import { createEngine } from "../src/jobs.ts";
 import { startMcpServer } from "../src/mcp.ts";
@@ -16,7 +17,8 @@ console.error("engine started");
 port?.on("message", ({ data: m }) => {
   const fail = (e: unknown) => post({ type: "error", message: e instanceof Error ? e.message : String(e) });
   try {
-    if (m?.type === "ping") post({ type: "pong" });
+    if (m?.type === "ping") (post({ type: "pong" }), postSettings());
+    else if (m?.type === "setSettings") setSettings(m.settings).catch(fail);
     else if (m?.type === "closeBrowsers") (browsers?.closeAll() ?? Promise.resolve()).catch(fail).finally(() => post({ type: "browsersClosed" }));
     else if (m?.type === "list") post({ type: "jobs", jobs: engine?.list() ?? [] });
     else if (!engine) throw new Error("engine not ready");
@@ -27,6 +29,15 @@ port?.on("message", ({ data: m }) => {
     fail(e);
   }
 });
+
+const postSettings = () => post({ type: "settings", settings: settings(loadConfig()) });
+// Browsers read config.yaml at launch; idle ones are closed on a hide_browsers change so the next job relaunches.
+async function setSettings(s: Partial<Pick<Settings, "close_idle_browsers" | "hide_browsers">>) {
+  const hide = settings(loadConfig()).hide_browsers;
+  saveConfig(s);
+  postSettings();
+  if (settings(loadConfig()).hide_browsers !== hide) await browsers?.closeUnused();
+}
 setInterval(() => {}, 2 ** 31 - 1); // stay up (and don't respawn-loop) if Chromium setup fails
 
 async function start() {

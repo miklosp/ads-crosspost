@@ -5,6 +5,7 @@ import { join, resolve, sep } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, shell, Tray, utilityProcess, type UtilityProcess } from "electron";
 import { buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeConnected } from "../src/connect.ts";
 import { formatSummary, importData } from "../src/import.ts";
+import type { Settings } from "../src/config.ts";
 import type { Job } from "../src/jobs.ts";
 import { runShim } from "../src/shim.ts";
 import { attentionCount, notificationFor, PLATFORMS, type AppState } from "./attention.ts";
@@ -26,6 +27,7 @@ let status = "Engine starting…";
 let quitting = false;
 let browser: string | undefined; // Chromium status until it's ready, then the MCP address
 let lastError: string | undefined;
+let settings: Settings | undefined; // from the engine, which owns config.yaml
 const jobs = new Map<string, Job>(); // latest known state of every job, relayed to the window
 const seen = new Set<string>(); // id:state pairs already considered for a notification
 const notes = new Set<Notification>(); // keep references so click handlers survive GC
@@ -45,8 +47,9 @@ function startEngine() {
     if (m?.type === "jobs") { jobs.clear(); for (const j of m.jobs as Job[]) jobs.set(j.id, j); }
     if (m?.type === "job") { jobs.set(m.job.id, m.job); lastError = undefined; notify(m.job); }
     if (m?.type === "error") lastError = m.message;
+    if (m?.type === "settings") settings = m.settings;
     if (m?.type === "pong" || m?.type === "chromium" || m?.type === "mcp") setStatus(browser ?? "Engine running");
-    if (m?.type === "jobs" || m?.type === "job" || m?.type === "error") setStatus(status);
+    if (m?.type === "jobs" || m?.type === "job" || m?.type === "error" || m?.type === "settings") setStatus(status);
   });
   engine.on("exit", (code) => {
     engine = undefined;
@@ -88,7 +91,7 @@ function setStatus(s: string) {
   win?.webContents.send("state", appState());
 }
 
-const appState = (): AppState => ({ status, error: lastError, jobs: [...jobs.values()] });
+const appState = (): AppState => ({ status, error: lastError, jobs: [...jobs.values()], settings });
 
 function notify(job: Job) {
   const n = notificationFor(job, seen, !!win?.isFocused());
@@ -158,6 +161,8 @@ ipcMain.handle("state", appState);
 ipcMain.on("login", (_e, p) => PLATFORMS.includes(p) && toEngine({ type: "login", platform: p }));
 ipcMain.on("publish", (_e, id) => jobs.has(id) && toEngine({ type: "publish", id }));
 ipcMain.on("cancel", (_e, id) => jobs.has(id) && toEngine({ type: "cancel", id }));
+ipcMain.on("set-setting", (_e, key, value) =>
+  ["close_idle_browsers", "hide_browsers"].includes(key) && typeof value === "boolean" && toEngine({ type: "setSettings", settings: { [key]: value } }));
 ipcMain.on("open-url", (_e, url) => {
   if (/^https?:\/\//.test(url) && [...jobs.values()].some((j) => j.url === url)) void shell.openExternal(url);
 });

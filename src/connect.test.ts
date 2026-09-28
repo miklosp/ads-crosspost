@@ -15,7 +15,7 @@ const tmp = () => mkdtempSync(join(tmpdir(), "ads-connect-"));
 const APP = "/Applications/Ads Crosspost.app/Contents/MacOS/Ads Crosspost";
 
 test("mcpb holds a manifest that runs the app with --stdio, tools from the daemon", async () => {
-  const mcp = await startMcpServer({ engine: createEngine({ flows: {}, browsers: { get: async () => ({}) as BrowserContext }, pace: () => 0 }), port: 0 });
+  const mcp = await startMcpServer({ engine: createEngine({ flows: {}, browsers: { get: async () => ({}) as BrowserContext, lease: () => () => {}, closeUnused: async () => {}, reveal: async () => {} }, pace: () => 0 }), port: 0 });
   after(() => mcp.close());
   const tools = await daemonTools(process.env.ADS_DATA_DIR!);
   assert.ok(tools.some((t) => t.name === "prepare_post" && t.description));

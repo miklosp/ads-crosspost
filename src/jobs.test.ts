@@ -60,7 +60,12 @@ function fakeBrowsers() {
       return page as unknown as Page;
     },
   }) as unknown as BrowserContext;
-  return { browsers: { get }, pages };
+  const log: string[] = [];
+  let leased = 0;
+  const lease = (p: PlatformName) => (leased++, log.push(`lease ${p}`), () => void (leased--, log.push(`release ${p}`)));
+  const closeUnused = async (p?: PlatformName) => void log.push(`closeUnused ${p} leased=${leased}`);
+  const reveal = async (_page: Page) => void log.push("reveal");
+  return { browsers: { get, lease, closeUnused, reveal }, pages, log, leased: () => leased };
 }
 
 // "fill" waits on gate(), so tests can hold a job in "running"
@@ -211,7 +216,7 @@ test("waitFor times out with the current state and wakes on change", async () =>
 });
 
 test("login completes when isLoggedIn turns true, cancelled when the page closes", async () => {
-  const { browsers, pages } = fakeBrowsers();
+  const { browsers, pages, log } = fakeBrowsers();
   let loggedIn = false;
   const e = createEngine({ flows: { tradera: fakeFlow("tradera", { loggedIn: () => loggedIn }) }, browsers, pace: () => 0, poll: 5 });
   const a = e.login("tradera");
@@ -222,6 +227,8 @@ test("login completes when isLoggedIn turns true, cancelled when the page closes
   pages[0].href = "https://tradera.test/home"; // user finished logging in
   await until(() => e.get(a.id).state === "logged_in");
   assert.ok(pages.every((p) => p.closed));
+  // window moved on-screen, then the browser closed once the job let go of it
+  assert.deepEqual(log, ["lease tradera", "reveal", "release tradera", "closeUnused tradera leased=0"]);
 
   loggedIn = false;
   const b = e.login("tradera");
@@ -229,6 +236,21 @@ test("login completes when isLoggedIn turns true, cancelled when the page closes
   await pages[2].close(); // user closed the window
   await until(() => e.get(b.id).state === "cancelled");
   await until(() => pages[3].closed);
+  assert.equal(log.filter((l) => l.startsWith("closeUnused")).length, 1); // only after logged_in
+});
+
+test("a ready_to_publish job keeps its lease until publish or cancel", async () => {
+  const { browsers, leased } = fakeBrowsers();
+  const e = createEngine({ flows: { tradera: fakeFlow("tradera", { loggedIn: () => true }) }, browsers, pace: () => 0 });
+  const a = e.preparePost(slug, "tradera");
+  await until(() => e.get(a.id).state === "ready_to_publish");
+  assert.equal(leased(), 1);
+  e.publish(a.id);
+  await until(() => e.get(a.id).state === "posted");
+  assert.equal(leased(), 0);
+  const b = e.preparePost("nope", "tradera"); // fails before any page
+  await until(() => e.get(b.id).state === "failed");
+  assert.equal(leased(), 0);
 });
 
 test("reload turns unfinished jobs into expired", async () => {

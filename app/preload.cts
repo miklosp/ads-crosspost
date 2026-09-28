@@ -11,6 +11,7 @@ const api = {
   cancel: (id: string) => ipcRenderer.send("cancel", id),
   screenshot: (id: string): Promise<string | undefined> => ipcRenderer.invoke("screenshot", id),
   openUrl: (url: string) => ipcRenderer.send("open-url", url),
+  setSetting: (key: "close_idle_browsers" | "hide_browsers", value: boolean) => ipcRenderer.send("set-setting", key, value),
 };
 export type Api = typeof api;
 contextBridge.exposeInMainWorld("api", api);

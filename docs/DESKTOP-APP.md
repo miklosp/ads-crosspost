@@ -56,6 +56,19 @@ content could inject prompts into a tool that can write.
   disable occlusion throttling.
 - **Linux:** Xvfb/Xephyr per browser on X11.
 
+## Browser settings
+
+The window's **Settings** section writes two keys to `config.yaml` in the data folder (comments and other
+keys are kept). The engine reads them when it launches a browser, so no restart is needed.
+
+- `close_idle_browsers` (default on): a site's browser closes after 5 minutes without a job. It is never
+  closed while a job holds a page in it, e.g. a form waiting in `ready_to_publish`. The next job relaunches
+  it, so focus is stolen again then.
+- `hide_browsers` (default on when `window_display` is set): open browsers on `window_display`. Off means
+  normal placement. Changing it closes idle browsers; ones in use keep their position until relaunched.
+- A login job always moves its window to the main display (CDP `Browser.setWindowBounds`). Once the site
+  reports logged in, that site's browser is closed, so the next job relaunches it hidden.
+
 ## Signing
 
 - macOS: Developer ID + notarization, $99/yr. Without it the user allows the app in System Settings

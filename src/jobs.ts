@@ -37,18 +37,20 @@ export class JobStateError extends Error {}
 
 type Opts = {
   flows: Partial<Record<PlatformName, Flow>>;
-  browsers: Pick<ReturnType<typeof browserManager>, "get">;
+  browsers: Pick<ReturnType<typeof browserManager>, "get" | "lease" | "closeUnused" | "reveal">;
   now?: () => number;
   pace?: () => number; // ms between the end of one job and the start of the next prepare on a platform
   poll?: number; // ms between login checks
 };
 
 // In-process job queue driven by the MCP server and the desktop UI. Browser work is serialised per
-// platform; a ready_to_publish job keeps its page open but does not hold the queue.
+// platform; a ready_to_publish job keeps its page open but does not hold the queue. A job with a page leases
+// its platform's browser, so the idle close (browsers.ts) never closes it under the job.
 export function createEngine({ flows, browsers, now = Date.now, pace = () => 20_000 + Math.random() * 40_000, poll = 3000 }: Opts) {
   const events = new EventEmitter<{ change: [Job] }>();
   const jobs = new Map<string, Job>();
   const pages = new Map<string, Page>();
+  const releases = new Map<string, () => void>();
   const handles = new Map<string, Handle>();
   const tails = new Map<PlatformName, Promise<void>>();
   const lastEnd = new Map<PlatformName, number>();
@@ -97,6 +99,8 @@ export function createEngine({ flows, browsers, now = Date.now, pace = () => 20_
     pages.delete(id);
     handles.delete(id);
     await page?.close().catch(() => {});
+    releases.get(id)?.();
+    releases.delete(id);
   };
 
   const enqueue = (job: Job, run: () => Promise<void>) => {
@@ -116,6 +120,7 @@ export function createEngine({ flows, browsers, now = Date.now, pace = () => 20_
   };
 
   const newPage = async (job: Job) => {
+    if (!releases.has(job.id)) releases.set(job.id, browsers.lease(job.platform));
     const page = await (await browsers.get(job.platform)).newPage();
     pages.set(job.id, page);
     return page;
@@ -128,26 +133,31 @@ export function createEngine({ flows, browsers, now = Date.now, pace = () => 20_
       update(job, { state: "running" });
       const page = await newPage(job);
       const closed = new Promise<void>((res) => page.once("close", () => res()));
+      await browsers.reveal(page); // the user must see it, even if the browser runs hidden
       await page.goto(flow.loginUrl);
       await page.bringToFront();
       // isLoggedIn navigates, so it runs on a separate probe tab, and only when the user's tab has moved
       let probe: Page | undefined;
       let seen = "";
+      let ok = false;
       try {
-        while (!page.isClosed()) {
+        while (!ok && !page.isClosed()) {
           if (flow.isLoggedIn && page.url() !== seen) {
             seen = page.url();
             probe ??= await (await browsers.get(platform)).newPage();
-            const ok = await flow.isLoggedIn(probe);
+            ok = await flow.isLoggedIn(probe);
             if (!page.isClosed()) await page.bringToFront();
-            if (ok) return update(job, { state: "logged_in" });
           }
-          await Promise.race([sleep(poll), closed]);
+          if (!ok) await Promise.race([sleep(poll), closed]);
         }
-        update(job, { state: "cancelled" });
       } finally {
         await probe?.close().catch(() => {});
       }
+      if (!ok) return update(job, { state: "cancelled" });
+      // close the now on-screen browser; the next job relaunches it per the hide_browsers setting
+      await closePage(job.id);
+      await browsers.closeUnused(platform);
+      update(job, { state: "logged_in" });
     });
     return { ...job };
   }

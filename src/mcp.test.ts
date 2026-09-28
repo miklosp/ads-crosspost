@@ -27,7 +27,12 @@ class FakePage extends EventEmitter {
   waitForTimeout = async () => {};
   close = async () => void (this.closed = true);
 }
-const browsers = { get: async () => ({ newPage: async () => new FakePage() as unknown as Page }) as unknown as BrowserContext };
+const browsers = {
+  get: async () => ({ newPage: async () => new FakePage() as unknown as Page }) as unknown as BrowserContext,
+  lease: () => () => {},
+  closeUnused: async () => {},
+  reveal: async () => {},
+};
 const flow: Flow = {
   platform: "tradera",
   version: 1,

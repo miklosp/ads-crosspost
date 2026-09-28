@@ -1,4 +1,4 @@
-// App window: status, platform logins, jobs, and review of ready_to_publish jobs. Talks to main via window.api.
+// App window: status, platform logins, jobs, review of ready_to_publish jobs, and settings. Talks to main via window.api.
 import type { Job } from "../src/jobs.ts";
 import { loginState, newestFirst, PLATFORMS, type AppState } from "./attention.ts";
 import type { Api } from "./preload.cts";
@@ -40,6 +40,20 @@ function render() {
 
   const jobs = newestFirst(state.jobs);
   $("jobs").replaceChildren(...(jobs.length ? jobs.map(jobRow) : [h("li", { class: "muted" }, "No jobs yet")]));
+
+  const s = state.settings;
+  $("settings-section").hidden = !s;
+  if (s) $("settings").replaceChildren(
+    setting("close_idle_browsers", "Close browsers after 5 minutes of inactivity", s.close_idle_browsers),
+    setting("hide_browsers", "Run browsers outside the visible area", s.hide_browsers, !s.window_display,
+      s.window_display ? `On display "${s.window_display}". Applies to browsers opened from now on.` : "Needs window_display in config.yaml."));
+}
+
+function setting(key: Parameters<Api["setSetting"]>[0], label: string, checked: boolean, disabled = false, hint?: string) {
+  const box = h("input", { type: "checkbox", change: (e) => api.setSetting(key, (e.target as HTMLInputElement).checked) }) as HTMLInputElement;
+  box.checked = checked;
+  box.disabled = disabled;
+  return h("li", {}, h("label", {}, box, ` ${label}`), hint ? h("span", { class: "muted detail" }, hint) : undefined);
 }
 
 function reviewCard(j: Job) {

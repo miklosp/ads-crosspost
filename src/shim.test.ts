@@ -12,7 +12,7 @@ const { createEngine } = await import("./jobs.ts");
 const { startMcpServer } = await import("./mcp.ts");
 const { appDataDir } = await import("./shim.ts");
 
-const engine = createEngine({ flows: {}, browsers: { get: async () => ({}) as BrowserContext }, pace: () => 0 });
+const engine = createEngine({ flows: {}, browsers: { get: async () => ({}) as BrowserContext, lease: () => () => {}, closeUnused: async () => {}, reveal: async () => {} }, pace: () => 0 });
 let mcp = await startMcpServer({ engine, port: 0 });
 after(() => mcp.close());
 

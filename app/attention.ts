@@ -1,11 +1,12 @@
 // Pure logic shared by the main process (notifications, tray) and the window. No Node or Electron imports.
+import type { Settings } from "../src/config.ts";
 import type { Job } from "../src/jobs.ts";
 import type { PlatformName } from "../src/record.ts";
 
 export const PLATFORMS = ["blocket", "tradera", "vinted", "facebook"] as const satisfies readonly PlatformName[];
 
 // What main pushes to the window.
-export type AppState = { status: string; error?: string; jobs: Job[] };
+export type AppState = { status: string; error?: string; jobs: Job[]; settings?: Settings };
 
 const ATTENTION: Job["state"][] = ["needs_login", "ready_to_publish"];
 export const attentionCount = (jobs: Iterable<Job>) => [...jobs].filter((j) => ATTENTION.includes(j.state)).length;

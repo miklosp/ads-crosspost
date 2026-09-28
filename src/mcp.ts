@@ -47,7 +47,9 @@ async function jobResult(job: Job): Promise<CallToolResult> {
     for (const [width, quality] of [[1280, 80], [1280, 60], [1024, 50], [800, 40]]) {
       const buf = await sharp(job.screenshot).resize({ width, withoutEnlargement: true }).jpeg({ quality }).toBuffer();
       if (buf.length < 1_000_000 || width === 800) {
-        out.push(jpeg(buf), text(`Screenshot of the filled form: ${job.screenshot}. Show it to the user and get explicit approval before calling publish.`));
+        out.push(jpeg(buf), text(`Screenshot of the filled form. Show this screenshot to the user (display the image, don't just describe it). ` +
+          `It's also saved at ${job.screenshot} and shown in the Ads Crosspost window under Review, where the user can publish too. ` +
+          `Get explicit approval before calling publish.`));
         break;
       }
     }
@@ -60,12 +62,20 @@ async function jobResult(job: Job): Promise<CallToolResult> {
 }
 
 const PROMPT = readFileSync(join(ROOT, "src", "prompts", "post_ad.md"), "utf8");
+const photosIn = (folder?: string) => (folder ? `\nPhotos are in: ${folder}\n` : "");
+const FIRST = "If you haven't called start_ad in this conversation, call it first. ";
 
 function buildServer(engine: Engine, claude: string) {
   const s = new McpServer({ name: "ads-crosspost", version: "0.1.0" }, { instructions: INSTRUCTIONS });
   const ro = { readOnlyHint: true };
 
-  s.registerTool("list_items", { description: "List all items with status and per-platform listing status.", annotations: ro }, async () => {
+  s.registerTool("start_ad", {
+    description: "Call this first, before any other ads-crosspost tool, at the start of every new ad. Returns the workflow and the rules for writing and posting ads.",
+    inputSchema: { folder: z.string().optional().describe("folder with the item's photos") },
+    annotations: ro,
+  }, async ({ folder }) => ok(text(INSTRUCTIONS + "\n\n" + PROMPT + photosIn(folder))));
+
+  s.registerTool("list_items", { description: FIRST + "List all items with status and per-platform listing status.", annotations: ro }, async () => {
     const dir = join(DATA, "items");
     const slugs = existsSync(dir) ? readdirSync(dir).filter((d) => existsSync(join(dir, d, "item.yaml"))) : [];
     return ok(text(slugs.map((slug) => {
@@ -78,11 +88,11 @@ function buildServer(engine: Engine, claude: string) {
     })));
   });
 
-  s.registerTool("get_item", { description: "Full item record, including listings (status/url per platform).", inputSchema: { slug: Slug }, annotations: ro },
+  s.registerTool("get_item", { description: FIRST + "Full item record, including listings (status/url per platform).", inputSchema: { slug: Slug }, annotations: ro },
     async ({ slug }) => ok(text(loadRecord(slug))));
 
   s.registerTool("create_item", {
-    description: "Create items/<slug>/item.yaml. Call add_photos(slug) first; `photos` are the relative paths it returned. " +
+    description: FIRST + "Create items/<slug>/item.yaml. Call add_photos(slug) first; `photos` are the relative paths it returned. " +
       "Ad text in Swedish (sv) and English (en); titles ≤60 chars, at most 8 capital letters; description 3–8 short lines, no price/location/shipping. " +
       "Pick categories and field values only from search_categories / get_category_fields / search_options. A platforms key present = post there. Fails if the slug exists.",
     inputSchema: { fields: RecordSchema.omit({ created: true, listings: true }) },
@@ -94,7 +104,7 @@ function buildServer(engine: Engine, claude: string) {
   });
 
   s.registerTool("update_item", {
-    description: "Patch an item record (JSON merge patch: objects merge, arrays and scalars replace, null deletes a key, e.g. {platforms: {vinted: null}}). " +
+    description: FIRST + "Patch an item record (JSON merge patch: objects merge, arrays and scalars replace, null deletes a key, e.g. {platforms: {vinted: null}}). " +
       "Result is validated against the record schema. `slug` and `listings` cannot be changed.",
     inputSchema: { slug: Slug, patch: z.record(z.string(), z.unknown()) },
   }, async ({ slug, patch }) => {
@@ -103,7 +113,7 @@ function buildServer(engine: Engine, claude: string) {
   });
 
   s.registerTool("add_photos", {
-    description: "Copy photos (jpg/jpeg/png/heic; HEIC is converted to JPEG) from a folder or explicit file paths into items/<slug>/photos/ and return thumbnails so you can see them. " +
+    description: FIRST + "Copy photos (jpg/jpeg/png/heic; HEIC is converted to JPEG) from a folder or explicit file paths into items/<slug>/photos/ and return thumbnails so you can see them. " +
       "With neither folder nor paths, imports every photo in the user's inbox folder (name order) and then moves the originals to <inbox>/imported/<slug>/. " +
       "In a Cowork VM, pass the /sessions/... paths you see (attached inbox folder or files dropped in the chat) as-is; they are mapped to host paths. " +
       "Works before create_item. If the item exists, the photos are appended to its record.",
@@ -154,7 +164,7 @@ function buildServer(engine: Engine, claude: string) {
   });
 
   s.registerTool("search_categories", {
-    description: "Search a platform's category taxonomy (case-insensitive, all words must match). Returns ≤20 full category paths to use verbatim.",
+    description: FIRST + "Search a platform's category taxonomy (case-insensitive, all words must match). Returns ≤20 full category paths to use verbatim.",
     inputSchema: { platform: Platform, query: z.string() },
     annotations: ro,
   }, async ({ platform, query }) => {
@@ -163,7 +173,7 @@ function buildServer(engine: Engine, claude: string) {
   });
 
   s.registerTool("get_category_fields", {
-    description: "Required and optional form fields for a category (exact path from search_categories), with labels and allowed options. Long option lists are truncated; use search_options.",
+    description: FIRST + "Required and optional form fields for a category (exact path from search_categories), with labels and allowed options. Long option lists are truncated; use search_options.",
     inputSchema: { platform: Platform, category: z.string() },
     annotations: ro,
   }, async ({ platform, category }) => {
@@ -180,7 +190,7 @@ function buildServer(engine: Engine, claude: string) {
   });
 
   s.registerTool("search_options", {
-    description: "Search the allowed options of one field (key from get_category_fields). Case-insensitive, all words must match; ≤30 results.",
+    description: FIRST + "Search the allowed options of one field (key from get_category_fields). Case-insensitive, all words must match; ≤30 results.",
     inputSchema: { platform: Platform, field: z.string(), query: z.string() },
     annotations: ro,
   }, async ({ platform, field, query }) => {
@@ -191,42 +201,42 @@ function buildServer(engine: Engine, claude: string) {
   });
 
   s.registerTool("login", {
-    description: "Open a browser window on the platform's login page for the user to log in. Returns a job at once; poll with wait_for_status until logged_in.",
+    description: FIRST + "Open a browser window on the platform's login page for the user to log in. Returns a job at once; poll with wait_for_status until logged_in.",
     inputSchema: { platform: Platform },
   }, async ({ platform }) => ok(text(engine.login(platform))));
 
   s.registerTool("prepare_post", {
-    description: "Fill the platform's listing form for an item in a browser, without submitting. Returns a job at once; poll with wait_for_status. " +
+    description: FIRST + "Fill the platform's listing form for an item in a browser, without submitting. Returns a job at once; poll with wait_for_status. " +
       "At ready_to_publish you get a screenshot to show the user. needs_login → call login.",
     inputSchema: { slug: Slug, platform: Platform },
   }, async ({ slug, platform }) => ok(text(engine.preparePost(slug, platform))));
 
-  s.registerTool("get_status", { description: "Current state of a job (with screenshot when ready_to_publish, error details when failed).", inputSchema: { job_id: z.string() }, annotations: ro },
+  s.registerTool("get_status", { description: FIRST + "Current state of a job (with screenshot when ready_to_publish, error details when failed).", inputSchema: { job_id: z.string() }, annotations: ro },
     async ({ job_id }) => jobResult(engine.get(job_id)));
 
   s.registerTool("wait_for_status", {
-    description: "Wait until a job changes state (or is already settled), up to max_s seconds. Same result as get_status. Call repeatedly while queued/running/publishing.",
+    description: FIRST + "Wait until a job changes state (or is already settled), up to max_s seconds. Same result as get_status. Call repeatedly while queued/running/publishing.",
     inputSchema: { job_id: z.string(), max_s: z.number().min(0).max(45).default(30) },
     annotations: ro,
   }, async ({ job_id, max_s }) => jobResult(await engine.waitFor(job_id, max_s * 1000)));
 
   s.registerTool("publish", {
-    description: "Submit a ready_to_publish job's filled form, making the ad public. Call ONLY after the user has seen the screenshot and explicitly approved publishing. Then poll with wait_for_status until posted.",
+    description: FIRST + "Submit a ready_to_publish job's filled form, making the ad public. Call ONLY after the user has seen the screenshot and explicitly approved publishing. Then poll with wait_for_status until posted.",
     inputSchema: { job_id: z.string() },
     annotations: { destructiveHint: true, idempotentHint: false },
   }, async ({ job_id }) => ok(text(engine.publish(job_id))));
 
-  s.registerTool("cancel", { description: "Cancel a job and close its browser page; a filled form is abandoned.", inputSchema: { job_id: z.string() } },
+  s.registerTool("cancel", { description: FIRST + "Cancel a job and close its browser page; a filled form is abandoned.", inputSchema: { job_id: z.string() } },
     async ({ job_id }) => ok(text(await engine.cancel(job_id))));
 
   s.registerPrompt("post_ad", {
     description: "Interview the user about an item, write the ad in Swedish and English, save it and post it with approval.",
     argsSchema: { folder: z.string().optional().describe("folder with the item's photos") },
   }, ({ folder }) => ({
-    messages: [{ role: "user", content: { type: "text", text: PROMPT + (folder ? `\nPhotos are in: ${folder}\n` : "") } }],
+    messages: [{ role: "user", content: { type: "text", text: PROMPT + photosIn(folder) } }],
   }));
 
-  s.registerTool("list_jobs", { description: "All jobs, newest last.", annotations: ro }, async () => ok(text(engine.list())));
+  s.registerTool("list_jobs", { description: FIRST + "All jobs, newest last.", annotations: ro }, async () => ok(text(engine.list())));
 
   return s;
 }

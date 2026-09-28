@@ -75,7 +75,7 @@ test("token and port persisted 0600", () => {
 
 test("create → prepare → ready with screenshot → publish → posted", async () => {
   const names = (await client.listTools()).tools.map((t) => t.name);
-  for (const n of ["list_items", "get_item", "create_item", "update_item", "add_photos", "search_categories", "get_category_fields",
+  for (const n of ["start_ad", "list_items", "get_item", "create_item", "update_item", "add_photos", "search_categories", "get_category_fields",
     "search_options", "login", "prepare_post", "get_status", "wait_for_status", "publish", "cancel", "list_jobs"])
     assert.ok(names.includes(n), n);
 
@@ -118,6 +118,9 @@ test("create → prepare → ready with screenshot → publish → posted", asyn
   const meta = await sharp(Buffer.from((imgs[0] as { data: string }).data, "base64")).metadata();
   assert.equal(meta.format, "jpeg");
   assert.ok(meta.width! <= 1280);
+  const note = r.content.filter((c) => c.type === "text").map((c) => (c as { text: string }).text).join("\n");
+  assert.ok(note.includes(json(r).screenshot), "screenshot path");
+  assert.match(note, /display the image[\s\S]*under Review/);
 
   const tool = (await client.listTools()).tools.find((t) => t.name === "publish")!;
   assert.equal(tool.annotations?.destructiveHint, true);
@@ -173,8 +176,15 @@ test("add_photos without paths imports the inbox and moves originals to imported
   rmSync(join(DATA, "config.yaml"));
 });
 
-test("instructions and post_ad prompt", async () => {
-  assert.match(client.getInstructions() ?? "", /publish/);
+test("instructions, start_ad and post_ad prompt", async () => {
+  assert.match(client.getInstructions() ?? "", /start_ad[\s\S]*publish/);
+  const { tools } = await client.listTools();
+  for (const t of tools.filter((t) => t.name !== "start_ad")) assert.match(t.description ?? "", /start_ad/, t.name);
+  assert.equal(tools.find((t) => t.name === "start_ad")?.annotations?.readOnlyHint, true);
+  const rules = ((await call("start_ad", { folder: "/tmp/photos" })).content[0] as { text: string }).text;
+  assert.match(rules, /Workflow per item/);
+  assert.match(rules, /Pick the slug first: lowercase kebab/);
+  assert.match(rules, /Photos are in: \/tmp\/photos/);
   const { prompts } = await client.listPrompts();
   assert.deepEqual(prompts.map((p) => p.name), ["post_ad"]);
   assert.equal(prompts[0].arguments?.[0]?.name, "folder");

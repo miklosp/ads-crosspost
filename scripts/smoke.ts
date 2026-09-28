@@ -46,7 +46,7 @@ async function main() {
   const http = new Client({ name: "smoke", version: "0" });
   await http.connect(new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
   const tools = (await http.listTools()).tools.map((t) => t.name);
-  for (const t of ["prepare_post", "publish", "search_categories"]) assert.ok(tools.includes(t), `http: tool ${t} missing`);
+  for (const t of ["start_ad", "prepare_post", "publish", "search_categories"]) assert.ok(tools.includes(t), `http: tool ${t} missing`);
   assert.ok((await http.listPrompts()).prompts.some((p) => p.name === "post_ad"), "http: prompt post_ad missing");
   const r = await http.callTool({ name: "search_categories", arguments: { platform: "tradera", query: "cykel" } });
   const hits = JSON.parse((r.content as { text: string }[])[0].text) as string[];

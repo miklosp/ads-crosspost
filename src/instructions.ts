@@ -1,5 +1,5 @@
 // Server instructions, shared by the daemon (mcp.ts) and the stdio shim so every host sees them.
-export const INSTRUCTIONS = `Posts used-item ads to Blocket, Tradera, Facebook Marketplace and Vinted. For the full interview and ad-writing rules, use the post_ad prompt.
+export const INSTRUCTIONS = `Posts used-item ads to Blocket, Tradera, Facebook Marketplace and Vinted. Call start_ad first at the start of every new ad: it returns this workflow plus the full interview and ad-writing rules (also served as the post_ad prompt).
 
 Workflow per item:
 1. add_photos(slug) and look at the thumbnails. With no folder/paths it imports the user's photo inbox folder and moves the originals to its imported/ subfolder; pass folder or paths for photos elsewhere. In Cowork, pass the /sessions/... paths you see (attached inbox folder, files dropped in the chat) as-is; the server maps them to the host.
@@ -8,6 +8,6 @@ Workflow per item:
 4. Per platform: search_categories, then get_category_fields (search_options for long lists). Use paths and values verbatim; never invent them.
 5. create_item (update_item to change it later).
 6. One platform at a time: prepare_post, then wait_for_status until it settles.
-   - ready_to_publish: show the screenshot and ask for explicit approval. Call publish only on a clear yes, then wait_for_status until posted. Never publish without approval.
+   - ready_to_publish: display the screenshot image to the user (don't just describe it) and ask for explicit approval. Call publish only on a clear yes, then wait_for_status until posted. Never publish without approval.
    - needs_login: call login(platform), ask the user to log in in the browser window that opens, wait for logged_in, then prepare_post again.
    - failed: report the step and error to the user. Don't retry blindly.`;

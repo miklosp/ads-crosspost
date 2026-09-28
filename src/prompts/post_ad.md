@@ -6,7 +6,7 @@ Goal: one item record per object, with ad text in `sv` and `en`, created with `c
 
 Pick the slug first: lowercase kebab of brand+item, e.g. `ikea-poang-armchair`. If `list_items` already has it, append `-2`.
 
-Call `add_photos(slug, folder)` (or `paths`) and look at the thumbnails it returns. Extract what you can from them.
+Call `add_photos(slug)` and look at the thumbnails it returns. Extract what you can from them. With no `folder`/`paths` it imports the user's photo inbox folder; pass `folder` or `paths` for photos elsewhere. In Cowork, pass the `/sessions/...` paths you see (attached inbox folder, files dropped in the chat) as-is.
 
 Ask only for what's missing. If the user gives photos or a dump of facts, extract what you can first, then ask the rest in **one** batched question. Don't interrogate field by field.
 
@@ -16,7 +16,7 @@ Required:
 - price (SEK) and whether it's negotiable
 - pickup location (city/area)
 - shipping: yes/no
-- photos: a folder or file paths on the user's computer
+- photos: in the inbox folder, or a folder or file paths on the user's computer
 
 Nice to have (ask once, accept "skip"):
 - age / bought when, original price

@@ -46,7 +46,9 @@ function render() {
   if (s) $("settings").replaceChildren(
     setting("close_idle_browsers", "Close browsers after 5 minutes of inactivity", s.close_idle_browsers),
     setting("hide_browsers", "Run browsers outside the visible area", s.hide_browsers, !s.window_display,
-      s.window_display ? `On display "${s.window_display}". Applies to browsers opened from now on.` : "Needs window_display in config.yaml."));
+      s.window_display ? `On display "${s.window_display}". Applies to browsers opened from now on.` : "Needs window_display in config.yaml."),
+    h("li", {}, h("span", {}, "Photo inbox"), h("button", { click: () => api.chooseInbox() }, "Change…"),
+      h("button", { click: () => api.revealInbox() }, "Reveal in Finder"), h("span", { class: "muted detail" }, s.inbox)));
 }
 
 function setting(key: Parameters<Api["setSetting"]>[0], label: string, checked: boolean, disabled = false, hint?: string) {

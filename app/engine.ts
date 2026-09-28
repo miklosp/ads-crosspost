@@ -32,7 +32,7 @@ port?.on("message", ({ data: m }) => {
 
 const postSettings = () => post({ type: "settings", settings: settings(loadConfig()) });
 // Browsers read config.yaml at launch; idle ones are closed on a hide_browsers change so the next job relaunches.
-async function setSettings(s: Partial<Pick<Settings, "close_idle_browsers" | "hide_browsers">>) {
+async function setSettings(s: Partial<Pick<Settings, "close_idle_browsers" | "hide_browsers" | "inbox">>) {
   const hide = settings(loadConfig()).hide_browsers;
   saveConfig(s);
   postSettings();

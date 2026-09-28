@@ -2,7 +2,7 @@
 export const INSTRUCTIONS = `Posts used-item ads to Blocket, Tradera, Facebook Marketplace and Vinted. For the full interview and ad-writing rules, use the post_ad prompt.
 
 Workflow per item:
-1. add_photos(slug, folder) and look at the thumbnails.
+1. add_photos(slug) and look at the thumbnails. With no folder/paths it imports the user's photo inbox folder and moves the originals to its imported/ subfolder; pass folder or paths for photos elsewhere. In Cowork, pass the /sessions/... paths you see (attached inbox folder, files dropped in the chat) as-is; the server maps them to the host.
 2. Ask the user for missing facts (type, brand/model, condition + defects, price SEK and negotiable, location, shipping) in one batched question.
 3. Write title + description in Swedish (sv) and English (en): same facts, natural rewrite, no price/location/shipping in the description. Get the user's OK on the text.
 4. Per platform: search_categories, then get_category_fields (search_options for long lists). Use paths and values verbatim; never invent them.

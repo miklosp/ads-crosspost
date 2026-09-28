@@ -1,7 +1,8 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { homedir } from "node:os";
 import { basename, extname, join, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -10,8 +11,10 @@ import sharp from "sharp";
 import { z } from "zod";
 import type { createEngine, Job } from "./jobs.ts";
 import { createRecord, DATA, itemDir, loadRecord, PLATFORMS, RecordSchema, ROOT, updateRecord, type PlatformName } from "./record.ts";
+import { inboxDir, loadConfig } from "./config.ts";
 import { INSTRUCTIONS } from "./instructions.ts";
 import { importPhoto, isHeic } from "./photos.ts";
+import { claudeDir, hostPath, inInbox } from "./photos-paths.ts";
 
 type Engine = ReturnType<typeof createEngine>;
 type Content = CallToolResult["content"];
@@ -58,7 +61,7 @@ async function jobResult(job: Job): Promise<CallToolResult> {
 
 const PROMPT = readFileSync(join(ROOT, "src", "prompts", "post_ad.md"), "utf8");
 
-function buildServer(engine: Engine) {
+function buildServer(engine: Engine, claude: string) {
   const s = new McpServer({ name: "ads-crosspost", version: "0.1.0" }, { instructions: INSTRUCTIONS });
   const ro = { readOnlyHint: true };
 
@@ -101,6 +104,8 @@ function buildServer(engine: Engine) {
 
   s.registerTool("add_photos", {
     description: "Copy photos (jpg/jpeg/png/heic; HEIC is converted to JPEG) from a folder or explicit file paths into items/<slug>/photos/ and return thumbnails so you can see them. " +
+      "With neither folder nor paths, imports every photo in the user's inbox folder (name order) and then moves the originals to <inbox>/imported/<slug>/. " +
+      "In a Cowork VM, pass the /sessions/... paths you see (attached inbox folder or files dropped in the chat) as-is; they are mapped to host paths. " +
       "Works before create_item. If the item exists, the photos are appended to its record.",
     inputSchema: {
       slug: Slug,
@@ -108,8 +113,17 @@ function buildServer(engine: Engine) {
       paths: z.array(z.string()).optional().describe("absolute file paths"),
     },
   }, async ({ slug, folder, paths }) => {
-    const src = folder ? readdirSync(folder).filter((f) => PHOTO.test(f)).sort().map((f) => join(folder, f)) : (paths ?? []).map((p) => resolve(p));
-    if (!src.length) throw new Error("no jpg/jpeg/png/heic files given");
+    const roots = { inbox: inboxDir(loadConfig()), claude };
+    const notes: string[] = [];
+    const host = (p: string) => {
+      const r = hostPath(p, roots);
+      if (r.note) notes.push(r.note);
+      return resolve(r.path);
+    };
+    const dirPath = folder ? host(folder) : paths?.length ? undefined : roots.inbox;
+    if (dirPath === roots.inbox) mkdirSync(dirPath, { recursive: true });
+    const src = dirPath ? readdirSync(dirPath).filter((f) => PHOTO.test(f)).sort().map((f) => join(dirPath, f)) : (paths ?? []).map(host);
+    if (!src.length) throw new Error(`no jpg/jpeg/png/heic files given${dirPath === roots.inbox ? ` and the inbox (${roots.inbox}) is empty` : ""}`);
     const bad = src.filter((p) => !PHOTO.test(p) || !existsSync(p));
     if (bad.length) throw new Error(`not a photo or missing: ${bad.join(", ")}`);
     const dir = join(itemDir(slug), "photos");
@@ -123,7 +137,15 @@ function buildServer(engine: Engine) {
     }
     if (existsSync(join(itemDir(slug), "item.yaml")))
       updateRecord(slug, { photos: [...loadRecord(slug).photos, ...added.map((a) => a.rel)] });
-    const out: Content = [text(`Copied into items/${slug}/:\n${added.map((a) => `${a.rel} (from ${a.from})`).join("\n")}`)];
+    const done = join(roots.inbox, "imported", slug);
+    for (const from of src.filter((p) => inInbox(p, roots.inbox))) {
+      mkdirSync(done, { recursive: true });
+      let to = join(done, basename(from));
+      for (let i = 2; existsSync(to); i++) to = join(done, `${i}-${basename(from)}`);
+      renameSync(from, to);
+      notes.push(`moved ${basename(from)} to ${to}`);
+    }
+    const out: Content = [text(`Copied into items/${slug}/:\n${added.map((a) => `${a.rel} (from ${a.from})`).join("\n")}${notes.length ? `\n\n${notes.join("\n")}` : ""}`)];
     for (const a of added)
       await sharp(join(itemDir(slug), a.rel)).rotate().resize({ width: 512, height: 512, fit: "inside" }).jpeg({ quality: 70 }).toBuffer()
         .then((b) => out.push(text(a.rel), jpeg(b)))
@@ -222,7 +244,9 @@ const listen = (srv: Server, port: number, host: string) =>
 
 // Streamable HTTP, stateless (a fresh McpServer per request), on 127.0.0.1 only. Token and port persist in
 // <DATA>/mcp.json (0600) so configured hosts keep working across restarts.
-export async function startMcpServer({ engine, port, host = "127.0.0.1" }: { engine: Engine; port?: number; host?: string }) {
+// `claude`: Claude Desktop's config dir, where Cowork uploads are looked up (tests pass a fake one).
+export async function startMcpServer({ engine, port, host = "127.0.0.1", claude = claudeDir(homedir()) }:
+  { engine: Engine; port?: number; host?: string; claude?: string }) {
   const saved: Partial<Conf> = existsSync(CONF) ? JSON.parse(readFileSync(CONF, "utf8")) : {};
   const token = saved.token ?? randomBytes(32).toString("hex");
   const expected = Buffer.from(`Bearer ${token}`);
@@ -237,7 +261,7 @@ export async function startMcpServer({ engine, port, host = "127.0.0.1" }: { eng
     if (auth.length !== expected.length || !timingSafeEqual(auth, expected)) return deny(401, "unauthorized");
     if (new URL(req.url ?? "/", "http://x").pathname !== "/mcp") return deny(404, "not found");
     if (req.method !== "POST") return deny(405, "method not allowed"); // stateless: no GET stream, no DELETE
-    const server = buildServer(engine);
+    const server = buildServer(engine, claude);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => void transport.close().then(() => server.close()));
     await server.connect(transport);

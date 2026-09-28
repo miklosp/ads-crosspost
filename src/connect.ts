@@ -1,6 +1,8 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
+import { claudeDir } from "./photos-paths.ts";
+import { ROOT } from "./record.ts";
 import { daemonClient } from "./shim.ts";
 
 // "Connect" for stdio-only hosts: both run the app binary (in dev the electron binary) as plain node on the compiled
@@ -44,12 +46,31 @@ export function buildMcpb(opts: { appExecutable: string; shim: string; outDir: s
   return path;
 }
 
+// Cowork plugin (Customize → Plugins → Upload): the same stdio shim as a local .mcp.json server, which Cowork
+// binds into sessions more reliably than an .mcpb, plus the post_ad prompt as a skill. A frontmatter description
+// with angle brackets fails upload validation (claude-code#63081).
+const SKILL_DESCRIPTION = "Create a used-item ad and post it to Blocket, Tradera, Facebook Marketplace and Vinted with the Ads Crosspost tools. " +
+  "Use when the user wants to sell something, says new item, post an ad, or next object.";
+export function buildCoworkPlugin(opts: { appExecutable: string; shim: string; outDir: string; version: string }) {
+  const path = join(opts.outDir, `${NAME}-cowork.zip`);
+  const json = (v: unknown) => strToU8(JSON.stringify(v, null, 2));
+  const prompt = readFileSync(join(ROOT, "src", "prompts", "post_ad.md"), "utf8");
+  mkdirSync(opts.outDir, { recursive: true });
+  writeFileSync(path, zipSync({
+    ".claude-plugin/plugin.json": json({
+      name: NAME, version: opts.version, author: { name: "Ads Crosspost" },
+      description: "Write second-hand ads and post them to Swedish marketplaces through the Ads Crosspost app.",
+    }),
+    ".mcp.json": json({ mcpServers: { [NAME]: { command: opts.appExecutable, args: [opts.shim], env: ENV } } }),
+    "skills/post-ad/SKILL.md": strToU8(`---\nname: post-ad\ndescription: ${SKILL_DESCRIPTION}\n---\n\n${prompt}`),
+  }));
+  return path;
+}
+
 // Claude Desktop keeps installed extensions (id local.mcpb.<author>.<name>) in extensions-installations.json and
 // "Claude Extensions/<id>/" under its config dir. Undocumented, so "unknown" when neither is readable.
 export function isClaudeConnected(home: string, platform = process.platform, env = process.env): boolean | "unknown" {
-  const dir = platform === "darwin" ? join(home, "Library", "Application Support", "Claude")
-    : platform === "win32" ? join(env.APPDATA ?? join(home, "AppData", "Roaming"), "Claude")
-    : join(env.XDG_CONFIG_HOME ?? join(home, ".config"), "Claude");
+  const dir = claudeDir(home, platform, env);
   const ours = (id: string) => id === NAME || id.endsWith(`.${NAME}`);
   try {
     return Object.keys(JSON.parse(readFileSync(join(dir, "extensions-installations.json"), "utf8")).extensions ?? {}).some(ours);

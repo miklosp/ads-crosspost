@@ -42,6 +42,7 @@ Researched 2026-09-28. Builds on [BACKGROUND-APP.md](BACKGROUND-APP.md) and [MCP
 | Host | Route | Notes |
 |---|---|---|
 | Claude Desktop (mac/win) | `.mcpb` stdio shim → daemon | No localhost HTTP; custom connectors need public HTTPS. ~60 s timeout. Images OK. No elicitation. |
+| Claude Cowork | plugin zip (Tray → Connect → Claude Cowork…): `.mcp.json` stdio shim + `post-ad` skill | Upload in Customize → Plugins. `.mcpb` extensions often aren't bound into Cowork sessions; plugin `.mcp.json` servers are. Tools run on the host, the model sees VM paths: `add_photos` maps `/sessions/*/mnt/<inbox name>/…` to the inbox and `/sessions/*/mnt/uploads/<file>` to the newest `local-agent-mode-sessions/**/uploads/<file>` under Claude's config dir. Other VM paths are refused. Elicitation hangs. |
 | ChatGPT desktop (unified app) | `~/.codex/config.toml` entry (stdio or HTTP) | Tools reportedly hidden in Chat mode, work in Work/Codex mode ([codex#38162](https://github.com/openai/codex/issues/38162)). ChatGPT web needs public HTTPS, so skip it. |
 | Gemini app / Spark | none | No local MCP. Gemini CLI (API-key users) and Antigravity have local MCP config. |
 | Claude Code | `claude mcp add --transport http` | |
@@ -63,7 +64,7 @@ content could inject prompts into a tool that can write.
 
 ## Browser settings
 
-The window's **Settings** section writes two keys to `config.yaml` in the data folder (comments and other
+The window's **Settings** section writes keys to `config.yaml` in the data folder (comments and other
 keys are kept). The engine reads them when it launches a browser, so no restart is needed.
 
 - `close_idle_browsers` (default on): a site's browser closes after 5 minutes without a job. It is never
@@ -71,6 +72,8 @@ keys are kept). The engine reads them when it launches a browser, so no restart 
   it, so focus is stolen again then.
 - `hide_browsers` (default on when `window_display` is set): open browsers on `window_display`. Off means
   normal placement. Changing it closes idle browsers; ones in use keep their position until relaunched.
+- `inbox` (default `~/Pictures/Ads Inbox`, created on first use): `add_photos` without paths imports its
+  photos in name order, then moves the originals to `imported/<slug>/`. Only files in the inbox are moved.
 - A login job always moves its window to the main display (CDP `Browser.setWindowBounds`). Once the site
   reports logged in, that site's browser is closed, so the next job relaunches it hidden.
 

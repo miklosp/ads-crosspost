@@ -5,11 +5,12 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 import { strFromU8, unzipSync } from "fflate";
 import type { BrowserContext } from "patchright";
+import { parse } from "yaml";
 
 process.env.ADS_DATA_DIR = mkdtempSync(join(tmpdir(), "ads-connect-"));
 const { createEngine } = await import("./jobs.ts");
 const { startMcpServer } = await import("./mcp.ts");
-const { buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeConnected } = await import("./connect.ts");
+const { buildCoworkPlugin, buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeConnected } = await import("./connect.ts");
 
 const tmp = () => mkdtempSync(join(tmpdir(), "ads-connect-"));
 const APP = "/Applications/Ads Crosspost.app/Contents/MacOS/Ads Crosspost";
@@ -32,6 +33,22 @@ test("mcpb holds a manifest that runs the shim with the app binary as node, tool
   assert.deepEqual(m.server, { type: "binary", entry_point: APP, mcp_config: { command: APP, args: [SHIM], env: { ELECTRON_RUN_AS_NODE: "1" } } });
   assert.deepEqual(m.compatibility.platforms, ["darwin", "win32"]);
   assert.deepEqual(m.tools, tools);
+});
+
+test("cowork plugin zip: manifest, .mcp.json running the shim, post-ad skill without angle brackets in frontmatter", () => {
+  const files = unzipSync(readFileSync(buildCoworkPlugin({ appExecutable: APP, shim: SHIM, outDir: tmp(), version: "1.2.3" })));
+  assert.deepEqual(Object.keys(files).sort(), [".claude-plugin/plugin.json", ".mcp.json", "skills/post-ad/SKILL.md"]);
+  const m = JSON.parse(strFromU8(files[".claude-plugin/plugin.json"]));
+  assert.deepEqual([m.name, m.version, !!m.description, !!m.author.name], ["ads-crosspost", "1.2.3", true, true]);
+  assert.deepEqual(JSON.parse(strFromU8(files[".mcp.json"])),
+    { mcpServers: { "ads-crosspost": { command: APP, args: [SHIM], env: { ELECTRON_RUN_AS_NODE: "1" } } } });
+  const skill = strFromU8(files["skills/post-ad/SKILL.md"]);
+  const [, front, body] = skill.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)!;
+  const meta = parse(front);
+  assert.equal(meta.name, "post-ad");
+  assert.ok(meta.description.length > 20 && meta.description.length <= 1024);
+  assert.doesNotMatch(front, /[<>]/);
+  assert.equal(body.trim(), readFileSync(join(import.meta.dirname, "prompts", "post_ad.md"), "utf8").trim());
 });
 
 const read = (home: string) => readFileSync(join(home, ".codex", "config.toml"), "utf8");

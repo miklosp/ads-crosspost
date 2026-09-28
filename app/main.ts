@@ -1,8 +1,9 @@
+import { mkdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, shell, Tray, utilityProcess, type UtilityProcess } from "electron";
-import { buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeConnected } from "../src/connect.ts";
+import { buildCoworkPlugin, buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeConnected } from "../src/connect.ts";
 import { formatSummary, importData } from "../src/import.ts";
 import type { Settings } from "../src/config.ts";
 import type { Job } from "../src/jobs.ts";
@@ -72,6 +73,7 @@ function setStatus(s: string) {
     {
       label: "Connect", submenu: [
         { label: "Claude Desktop…", type: "checkbox", checked: isClaudeConnected(homedir()) === true, click: () => void connect(connectClaude) },
+        { label: "Claude Cowork…", click: () => void connect(connectCowork) },
         { label: "ChatGPT desktop", type: "checkbox", checked: isChatGPTConnected(homedir()), click: () => void connect(connectChatGPTApp) },
       ],
     },
@@ -110,6 +112,17 @@ async function connectClaude() {
   const path = buildMcpb({ ...launch, outDir: data, version: app.getVersion(), tools });
   const err = await shell.openPath(path); // Claude Desktop shows its install dialog
   if (err) throw new Error(`${err}\nInstall ${path} from Claude Desktop → Settings → Extensions.`);
+}
+function connectCowork() {
+  const path = buildCoworkPlugin({ ...launch, outDir: app.getPath("userData"), version: app.getVersion() });
+  shell.showItemInFolder(path);
+  const inbox = settings?.inbox;
+  if (inbox) mkdirSync(inbox, { recursive: true });
+  dialog.showMessageBox({
+    message: "Cowork plugin ready",
+    detail: `In Claude Desktop: Customize → Plugins → Add → Upload plugin, pick this file:\n${path}\n\n` +
+      `Then attach your inbox folder (${inbox ?? "see Settings"}) to Cowork tasks.`,
+  });
 }
 function connectChatGPTApp() {
   connectChatGPT({ home: homedir(), ...launch });
@@ -155,6 +168,15 @@ ipcMain.on("publish", (_e, id) => jobs.has(id) && toEngine({ type: "publish", id
 ipcMain.on("cancel", (_e, id) => jobs.has(id) && toEngine({ type: "cancel", id }));
 ipcMain.on("set-setting", (_e, key, value) =>
   ["close_idle_browsers", "hide_browsers"].includes(key) && typeof value === "boolean" && toEngine({ type: "setSettings", settings: { [key]: value } }));
+ipcMain.on("choose-inbox", async () => {
+  const pick = await dialog.showOpenDialog({ title: "Inbox folder for photos", defaultPath: settings?.inbox, properties: ["openDirectory", "createDirectory"] });
+  if (!pick.canceled && pick.filePaths[0]) toEngine({ type: "setSettings", settings: { inbox: pick.filePaths[0] } });
+});
+ipcMain.on("reveal-inbox", () => {
+  if (!settings) return;
+  mkdirSync(settings.inbox, { recursive: true });
+  void shell.openPath(settings.inbox);
+});
 ipcMain.on("open-url", (_e, url) => {
   if (/^https?:\/\//.test(url) && [...jobs.values()].some((j) => j.url === url)) void shell.openExternal(url);
 });

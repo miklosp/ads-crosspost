@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse, parseDocument } from "yaml";
 import { z } from "zod";
@@ -10,18 +11,23 @@ const Config = z.strictObject({
   window_display: z.string().optional(),
   close_idle_browsers: z.boolean().optional(),
   hide_browsers: z.boolean().optional(),
+  inbox: z.string().optional(),
 });
 type Config = z.infer<typeof Config>;
 export const configPath = (dir = DATA) => join(dir, "config.yaml");
 export const loadConfig = (dir = DATA) => Config.parse(existsSync(configPath(dir)) ? parse(readFileSync(configPath(dir), "utf8")) ?? {} : {});
 export const config = loadConfig();
 
-// The app's Settings checkboxes, with defaults filled in.
-export type Settings = { close_idle_browsers: boolean; hide_browsers: boolean; window_display?: string };
+// Folder add_photos imports from when given no paths; created on first use.
+export const inboxDir = (c: Config, home = homedir()) => c.inbox?.replace(/^~(?=$|[/\\])/, home) ?? join(home, "Pictures", "Ads Inbox");
+
+// The app's Settings section, with defaults filled in.
+export type Settings = { close_idle_browsers: boolean; hide_browsers: boolean; window_display?: string; inbox: string };
 export const settings = (c: Config): Settings => ({
   close_idle_browsers: c.close_idle_browsers ?? true,
   hide_browsers: c.hide_browsers ?? !!c.window_display,
   window_display: c.window_display,
+  inbox: inboxDir(c),
 });
 
 // Sets keys in config.yaml, keeping comments and the other keys.

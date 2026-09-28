@@ -12,6 +12,8 @@ const api = {
   screenshot: (id: string): Promise<string | undefined> => ipcRenderer.invoke("screenshot", id),
   openUrl: (url: string) => ipcRenderer.send("open-url", url),
   setSetting: (key: "close_idle_browsers" | "hide_browsers", value: boolean) => ipcRenderer.send("set-setting", key, value),
+  chooseInbox: () => ipcRenderer.send("choose-inbox"),
+  revealInbox: () => ipcRenderer.send("reveal-inbox"),
 };
 export type Api = typeof api;
 contextBridge.exposeInMainWorld("api", api);

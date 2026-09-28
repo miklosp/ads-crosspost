@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
@@ -49,7 +49,7 @@ const flow: Flow = {
 let mcp: Awaited<ReturnType<typeof startMcpServer>>;
 let client: Client;
 before(async () => {
-  mcp = await startMcpServer({ engine: createEngine({ flows: { tradera: flow }, browsers, pace: () => 0 }), port: 0 });
+  mcp = await startMcpServer({ engine: createEngine({ flows: { tradera: flow }, browsers, pace: () => 0 }), port: 0, claude: join(DATA, "Claude") });
   client = new Client({ name: "test", version: "0" });
   await client.connect(new StreamableHTTPClientTransport(new URL(mcp.url), { requestInit: { headers: { Authorization: `Bearer ${mcp.token}` } } }));
 });
@@ -138,6 +138,39 @@ test("add_photos converts HEIC to upright JPEG", async () => {
   assert.deepEqual([meta.format, meta.width, meta.height, meta.exif], ["jpeg", 32, 64, undefined]);
   const { data } = await img.raw().toBuffer({ resolveWithObject: true });
   assert.ok(data[0] > 200 && data[2] < 50, "top is red");
+});
+
+test("add_photos without paths imports the inbox and moves originals to imported/<slug>/; VM paths are mapped", async () => {
+  const inbox = join(DATA, "My Inbox");
+  writeFileSync(join(DATA, "config.yaml"), `inbox: ${JSON.stringify(inbox)}\n`);
+  const img = (p: string) => sharp({ create: { width: 64, height: 64, channels: 3, background: "#456" } }).jpeg().toFile(p);
+  mkdirSync(join(inbox, "imported", "old"), { recursive: true });
+  for (const f of ["b.jpg", "a.jpg", "imported/old/z.jpg"]) await img(join(inbox, f));
+  writeFileSync(join(inbox, "notes.txt"), "");
+
+  const r = await call("add_photos", { slug: "chair" });
+  assert.match((r.content[0] as { text: string }).text, /01\.jpg \(from a\.jpg\)\n.*02\.jpg \(from b\.jpg\)[\s\S]*moved a\.jpg/);
+  assert.deepEqual(readdirSync(join(DATA, "items", "chair", "photos")), ["01.jpg", "02.jpg"]);
+  assert.deepEqual(readdirSync(inbox).sort(), ["imported", "notes.txt"]);
+  assert.deepEqual(readdirSync(join(inbox, "imported", "chair")), ["a.jpg", "b.jpg"]);
+  assert.deepEqual(readdirSync(join(inbox, "imported", "old")), ["z.jpg"]);
+
+  // attached inbox (moved) + a chat upload (left in place)
+  await img(join(inbox, "c.jpg"));
+  const up = join(DATA, "Claude", "local-agent-mode-sessions", "acct", "org", "s1", "uploads");
+  mkdirSync(up, { recursive: true });
+  await img(join(up, "IMG_9.jpg"));
+  await call("add_photos", { slug: "chair", paths: ["/sessions/x/mnt/My Inbox/c.jpg", "/sessions/x/mnt/uploads/IMG_9.jpg"] });
+  assert.deepEqual(readdirSync(join(DATA, "items", "chair", "photos")), ["01.jpg", "02.jpg", "03.jpg", "04.jpg"]);
+  assert.deepEqual(readdirSync(join(inbox, "imported", "chair")), ["a.jpg", "b.jpg", "c.jpg"]);
+  assert.deepEqual(readdirSync(up), ["IMG_9.jpg"]);
+
+  const bad = (await client.callTool({ name: "add_photos", arguments: { slug: "chair", paths: ["/sessions/x/mnt/Desktop/a.jpg"] } })) as CallToolResult;
+  assert.ok(bad.isError);
+  assert.match((bad.content[0] as { text: string }).text, /attach the inbox folder/);
+  const empty = (await client.callTool({ name: "add_photos", arguments: { slug: "chair" } })) as CallToolResult;
+  assert.match((empty.content[0] as { text: string }).text, /inbox .* is empty/);
+  rmSync(join(DATA, "config.yaml"));
 });
 
 test("instructions and post_ad prompt", async () => {

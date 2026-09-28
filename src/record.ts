@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { parseDocument } from "yaml";
+import { isMap, parseDocument, stringify } from "yaml";
 import { z } from "zod";
 
 export const ROOT = new URL("..", import.meta.url).pathname; // code and static assets
@@ -114,6 +114,28 @@ export function setListing(slug: string, p: PlatformName, listing: Listing | und
   if (listing) doc.setIn(["listings", p], listing);
   else doc.deleteIn(["listings", p]);
   writeFileSync(yamlPath(slug), doc.toString());
+}
+
+export function createRecord(rec: Record) {
+  if (existsSync(yamlPath(rec.slug))) throw new Error(`items/${rec.slug}/item.yaml already exists`);
+  writeFileSync(yamlPath(rec.slug), stringify(RecordSchema.parse(rec)));
+}
+
+// JSON-merge-patch (RFC 7386) onto the yaml Document so comments survive: objects merge, null deletes, else replace.
+export function updateRecord(slug: string, patch: { [k: string]: unknown }) {
+  const doc = parseDocument(readFileSync(yamlPath(slug), "utf8"));
+  const merge = (path: string[], p: { [k: string]: unknown }) => {
+    for (const [k, v] of Object.entries(p)) {
+      const at = [...path, k];
+      if (v === null) doc.deleteIn(at);
+      else if (typeof v === "object" && !Array.isArray(v) && isMap(doc.getIn(at))) merge(at, v as { [k: string]: unknown });
+      else doc.setIn(at, v);
+    }
+  };
+  merge([], patch);
+  const rec = RecordSchema.parse(doc.toJS());
+  writeFileSync(yamlPath(slug), doc.toString());
+  return rec;
 }
 
 export function adText(rec: Record, p: PlatformName) {

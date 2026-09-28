@@ -13,14 +13,15 @@ const { buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeConn
 
 const tmp = () => mkdtempSync(join(tmpdir(), "ads-connect-"));
 const APP = "/Applications/Ads Crosspost.app/Contents/MacOS/Ads Crosspost";
+const SHIM = "/Applications/Ads Crosspost.app/Contents/Resources/app.asar/out/src/shim.js";
 
-test("mcpb holds a manifest that runs the app with --stdio, tools from the daemon", async () => {
+test("mcpb holds a manifest that runs the shim with the app binary as node, tools from the daemon", async () => {
   const mcp = await startMcpServer({ engine: createEngine({ flows: {}, browsers: { get: async () => ({}) as BrowserContext, lease: () => () => {}, closeUnused: async () => {}, reveal: async () => {} }, pace: () => 0 }), port: 0 });
   after(() => mcp.close());
   const tools = await daemonTools(process.env.ADS_DATA_DIR!);
   assert.ok(tools.some((t) => t.name === "prepare_post" && t.description));
 
-  const path = buildMcpb({ appExecutable: APP, outDir: tmp(), version: "1.2.3", tools });
+  const path = buildMcpb({ appExecutable: APP, shim: SHIM, outDir: tmp(), version: "1.2.3", tools });
   const files = unzipSync(readFileSync(path));
   assert.deepEqual(Object.keys(files), ["manifest.json"]);
   const m = JSON.parse(strFromU8(files["manifest.json"]));
@@ -28,7 +29,7 @@ test("mcpb holds a manifest that runs the app with --stdio, tools from the daemo
   assert.equal(m.name, "ads-crosspost");
   assert.equal(m.version, "1.2.3");
   assert.ok(m.author.name);
-  assert.deepEqual(m.server, { type: "binary", entry_point: APP, mcp_config: { command: APP, args: ["--stdio"] } });
+  assert.deepEqual(m.server, { type: "binary", entry_point: APP, mcp_config: { command: APP, args: [SHIM], env: { ELECTRON_RUN_AS_NODE: "1" } } });
   assert.deepEqual(m.compatibility.platforms, ["darwin", "win32"]);
   assert.deepEqual(m.tools, tools);
 });
@@ -39,9 +40,9 @@ const backups = (home: string) => readdirSync(join(home, ".codex")).filter((f) =
 test("codex: creates config in an empty home", () => {
   const home = tmp();
   assert.equal(isChatGPTConnected(home), false);
-  const r = connectChatGPT({ home, appExecutable: APP });
+  const r = connectChatGPT({ home, appExecutable: APP, shim: SHIM });
   assert.equal(r.backup, undefined);
-  assert.equal(read(home), `[mcp_servers.ads-crosspost]\ncommand = "${APP}"\nargs = ["--stdio"]\ntool_timeout_sec = 60\n`);
+  assert.equal(read(home), `[mcp_servers.ads-crosspost]\ncommand = "${APP}"\nargs = ["${SHIM}"]\nenv = { ELECTRON_RUN_AS_NODE = "1" }\ntool_timeout_sec = 60\n`);
   assert.equal(isChatGPTConnected(home), true);
 });
 
@@ -54,7 +55,7 @@ test("codex: keeps other servers and comments, backs up, replaces our table in p
     '',
     '[mcp_servers.ads-crosspost]',
     'command = "/old/path"',
-    'args = ["--stdio"]',
+    'args = ["/repo","--stdio"]',
     '',
     '[mcp_servers.ads-crosspost.env]',
     'X = "1"',
@@ -67,7 +68,8 @@ test("codex: keeps other servers and comments, backs up, replaces our table in p
   ].join("\n");
   writeFileSync(join(home, ".codex", "config.toml"), before);
 
-  const r = connectChatGPT({ home, appExecutable: "C:\\Program Files\\Ads\\Ads.exe", appArgs: ["/app"] });
+  const win = { home, appExecutable: "C:\\Program Files\\Ads\\Ads.exe", shim: "C:\\Program Files\\Ads\\resources\\app.asar\\out\\src\\shim.js" };
+  const r = connectChatGPT(win);
   assert.equal(r.changed, true);
   assert.equal(readFileSync(r.backup!, "utf8"), before);
   assert.equal(read(home), [
@@ -76,7 +78,8 @@ test("codex: keeps other servers and comments, backs up, replaces our table in p
     '',
     '[mcp_servers.ads-crosspost]',
     'command = "C:\\\\Program Files\\\\Ads\\\\Ads.exe"',
-    'args = ["/app","--stdio"]',
+    'args = ["C:\\\\Program Files\\\\Ads\\\\resources\\\\app.asar\\\\out\\\\src\\\\shim.js"]',
+    'env = { ELECTRON_RUN_AS_NODE = "1" }',
     'tool_timeout_sec = 60',
     '',
     '# docs server',
@@ -86,7 +89,7 @@ test("codex: keeps other servers and comments, backs up, replaces our table in p
     '',
   ].join("\n"));
 
-  const again = connectChatGPT({ home, appExecutable: "C:\\Program Files\\Ads\\Ads.exe", appArgs: ["/app"] });
+  const again = connectChatGPT(win);
   assert.equal(again.changed, false);
   assert.equal(backups(home).length, 1);
 });
@@ -96,7 +99,7 @@ test("codex: appends after existing content", () => {
   mkdirSync(join(home, ".codex"));
   writeFileSync(join(home, ".codex", "config.toml"), '[mcp_servers.ads-crosspost-other]\ncommand = "x"');
   assert.equal(isChatGPTConnected(home), false);
-  connectChatGPT({ home, appExecutable: APP });
+  connectChatGPT({ home, appExecutable: APP, shim: SHIM });
   assert.match(read(home), /^\[mcp_servers\.ads-crosspost-other\]\ncommand = "x"\n\n\[mcp_servers\.ads-crosspost\]\n/);
 });
 

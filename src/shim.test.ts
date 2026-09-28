@@ -10,7 +10,7 @@ import type { BrowserContext } from "patchright";
 process.env.ADS_DATA_DIR = mkdtempSync(join(tmpdir(), "ads-shim-"));
 const { createEngine } = await import("./jobs.ts");
 const { startMcpServer } = await import("./mcp.ts");
-const { appDataDir } = await import("./shim.ts");
+const { appDataDir, launchCommand } = await import("./shim.ts");
 
 const engine = createEngine({ flows: {}, browsers: { get: async () => ({}) as BrowserContext, lease: () => () => {}, closeUnused: async () => {}, reveal: async () => {} }, pace: () => 0 });
 let mcp = await startMcpServer({ engine, port: 0 });
@@ -34,6 +34,20 @@ test("appDataDir matches Electron userData", () => {
   assert.equal(appDataDir({ APPDATA: "/h/AppData/Roaming" }, "win32", "/h"), "/h/AppData/Roaming/ads-crosspost");
   assert.equal(appDataDir({}, "linux", "/h"), "/h/.config/ads-crosspost");
   assert.equal(appDataDir({ XDG_CONFIG_HOME: "/x" }, "linux", "/h"), "/x/ads-crosspost");
+});
+
+test("launchCommand: app launch per mode", () => {
+  const mac = "/Applications/Ads Crosspost.app/Contents/MacOS/Ads Crosspost";
+  const macShim = "/Applications/Ads Crosspost.app/Contents/Resources/app.asar/out/src/shim.js";
+  assert.deepEqual(launchCommand({ execPath: mac, file: macShim, platform: "darwin", electron: true }),
+    { command: "open", args: ["-g", "-a", "/Applications/Ads Crosspost.app"] });
+  const win = "C:\\Ads\\Ads.exe";
+  assert.deepEqual(launchCommand({ execPath: win, file: "C:\\Ads\\resources\\app.asar\\out\\src\\shim.js", platform: "win32", electron: true }),
+    { command: win, args: [] });
+  const electron = "/repo/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron";
+  assert.deepEqual(launchCommand({ execPath: electron, file: "/repo/out/src/shim.js", platform: "darwin", electron: true }),
+    { command: electron, args: ["/repo"] });
+  assert.equal(launchCommand({ execPath: "/usr/bin/node", file: "/repo/src/shim.ts", platform: "darwin", electron: false }), undefined);
 });
 
 test("proxies tools/list and tools/call; reconnects after a daemon restart", async () => {

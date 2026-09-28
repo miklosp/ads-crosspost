@@ -9,6 +9,7 @@ import { join, resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { mcpbManifest } from "../out/src/connect.js";
 
 const repo = resolve(import.meta.dirname, "..");
 const out = join(repo, "out");
@@ -53,12 +54,17 @@ async function main() {
   console.log(`http ok: ${tools.length} tools, post_ad prompt, search_categories → ${hits.length} hits (${hits[0]})`);
   await http.close();
 
-  const stdio = new Client({ name: "smoke", version: "0" });
-  await stdio.connect(new StdioClientTransport({ command: process.execPath, args: [join(out, "src", "shim.js")], env, stderr: "inherit" }));
-  const shimTools = (await stdio.listTools()).tools.map((t) => t.name);
-  assert.deepEqual(shimTools, tools, "shim: tools differ from the daemon's");
-  console.log(`shim ok: ${shimTools.length} tools`);
-  await stdio.close();
+  // plain, then as hosts run it (the connect config; node stands in for the app binary, ELECTRON_RUN_AS_NODE is inert)
+  const shim = join(out, "src", "shim.js");
+  const host = mcpbManifest({ appExecutable: process.execPath, shim, version: "0" }).server.mcp_config;
+  for (const [label, run] of [["shim", { command: process.execPath, args: [shim], env }], ["shim (host config)", { ...host, env: { ...env, ...host.env } }]] as const) {
+    const stdio = new Client({ name: "smoke", version: "0" });
+    await stdio.connect(new StdioClientTransport({ ...run, args: [...run.args], stderr: "inherit" }));
+    const shimTools = (await stdio.listTools()).tools.map((t) => t.name);
+    assert.deepEqual(shimTools, tools, `${label}: tools differ from the daemon's`);
+    console.log(`${label} ok: ${shimTools.length} tools`);
+    await stdio.close();
+  }
 }
 
 try {

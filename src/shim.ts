@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -12,8 +13,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { INSTRUCTIONS } from "./instructions.ts";
 
-// stdio ⇄ Streamable HTTP proxy for stdio-only MCP hosts (Claude Desktop .mcpb, Codex config). Reads the daemon's
-// port and token from <dataDir>/mcp.json so host configs hold no secrets. Stdout carries protocol only.
+// stdio ⇄ Streamable HTTP proxy for stdio-only MCP hosts (Claude Desktop .mcpb, Codex config). Hosts run it with the
+// app's binary as plain node (ELECTRON_RUN_AS_NODE=1, see connect.ts): no Electron app or Dock icon per connection.
+// Reads the daemon's port and token from <dataDir>/mcp.json so host configs hold no secrets. Stdout carries protocol only.
 
 const DOWN = "Ads Crosspost app isn't running — open it from Applications.";
 
@@ -87,4 +89,21 @@ export async function runShim({ dataDir, launchApp }: { dataDir: string; launchA
   await server.close();
 }
 
-if (import.meta.main) runShim({ dataDir: appDataDir() }).then(() => process.exit(0));
+// How to start the tray app when the daemon is down; only under Electron-as-node (under plain node there's no app).
+// Packaged, this file is in app.asar and execPath is the app binary; in dev, execPath is the electron binary and the
+// repo root is the app. macOS packaged goes through LaunchServices without -n: this process never registers as an
+// app instance, so `open` starts the app (or just finds the running one).
+export function launchCommand({ execPath, file, platform, electron }:
+  { execPath: string; file: string; platform: string; electron: boolean }): { command: string; args: string[] } | undefined {
+  if (!electron) return;
+  const packaged = /[\\/]app\.asar(\.unpacked)?[\\/]/.test(file);
+  if (packaged && platform === "darwin") return { command: "open", args: ["-g", "-a", resolve(execPath, "../../..")] };
+  return { command: execPath, args: packaged ? [] : [resolve(file, "../../..")] };
+}
+
+if (import.meta.main) {
+  const cmd = launchCommand({ execPath: process.execPath, file: import.meta.filename, platform: process.platform, electron: !!process.versions.electron });
+  const { ELECTRON_RUN_AS_NODE: _, ...env } = process.env;
+  runShim({ dataDir: appDataDir(), launchApp: cmd && (() => spawn(cmd.command, cmd.args, { detached: true, stdio: "ignore", env }).unref()) })
+    .then(() => process.exit(0));
+}

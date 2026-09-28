@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { strToU8, zipSync } from "fflate";
 import { daemonClient } from "./shim.ts";
 
-// "Connect" for stdio-only hosts: both launch the app binary with --stdio (src/shim.ts). appArgs goes before --stdio
-// (in dev: the app path, since the executable is the bare electron binary).
+// "Connect" for stdio-only hosts: both run the app binary (in dev the electron binary) as plain node on the compiled
+// shim (src/shim.ts), so each host connection is a node process, not an Electron app with a Dock icon.
 
 const NAME = "ads-crosspost";
 type Tool = { name: string; description?: string };
@@ -22,21 +22,22 @@ export async function daemonTools(dataDir: string): Promise<Tool[]> {
 // MCPB manifest 0.3. server.type "binary" with an absolute command outside the bundle: the spec lets
 // mcp_config.command be any command (hosts spawn it as given after ${__dirname} substitution), and a wrapper
 // inside the bundle would lose its exec bit when Claude Desktop extracts it (mcpb#294). The bundle is manifest-only.
-export const mcpbManifest = ({ appExecutable, appArgs = [], version, tools }:
-  { appExecutable: string; appArgs?: string[]; version: string; tools?: Tool[] }) => ({
+const ENV = { ELECTRON_RUN_AS_NODE: "1" };
+export const mcpbManifest = ({ appExecutable, shim, version, tools }:
+  { appExecutable: string; shim: string; version: string; tools?: Tool[] }) => ({
   manifest_version: "0.3",
   name: NAME,
   display_name: "Ads Crosspost",
   version,
   description: "Write second-hand ads and post them to Swedish marketplaces through the Ads Crosspost app.",
   author: { name: "Ads Crosspost" },
-  server: { type: "binary", entry_point: appExecutable, mcp_config: { command: appExecutable, args: [...appArgs, "--stdio"] } },
+  server: { type: "binary", entry_point: appExecutable, mcp_config: { command: appExecutable, args: [shim], env: ENV } },
   ...(tools && { tools }),
   tools_generated: true,
   compatibility: { platforms: ["darwin", "win32"] },
 });
 
-export function buildMcpb(opts: { appExecutable: string; appArgs?: string[]; outDir: string; version: string; tools?: Tool[] }) {
+export function buildMcpb(opts: { appExecutable: string; shim: string; outDir: string; version: string; tools?: Tool[] }) {
   const path = join(opts.outDir, `${NAME}.mcpb`);
   mkdirSync(opts.outDir, { recursive: true });
   writeFileSync(path, zipSync({ "manifest.json": strToU8(JSON.stringify(mcpbManifest(opts), null, 2)) }));
@@ -60,8 +61,9 @@ export function isClaudeConnected(home: string, platform = process.platform, env
 }
 
 // ChatGPT desktop (Work/Codex mode) shares Codex's ~/.codex/config.toml. JSON strings are valid TOML basic strings.
-export const codexConfigEntry = (appExecutable: string, appArgs: string[] = []) =>
-  `[mcp_servers.${NAME}]\ncommand = ${JSON.stringify(appExecutable)}\nargs = ${JSON.stringify([...appArgs, "--stdio"])}\ntool_timeout_sec = 60\n`;
+export const codexConfigEntry = (appExecutable: string, shim: string) =>
+  `[mcp_servers.${NAME}]\ncommand = ${JSON.stringify(appExecutable)}\nargs = ${JSON.stringify([shim])}\n` +
+  `env = { ${Object.entries(ENV).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join(", ")} }\ntool_timeout_sec = 60\n`;
 
 const codexConfig = (home: string) => join(home, ".codex", "config.toml");
 const OURS = new RegExp(`^\\s*\\[\\s*mcp_servers\\s*\\.\\s*"?${NAME}"?\\s*(\\.[^\\]]*)?\\]`); // our table and its subtables
@@ -78,10 +80,10 @@ export function mergeCodexConfig(toml: string, entry: string) {
   return [...lines.slice(0, start), ...entry.trimEnd().split("\n"), ...lines.slice(end)].join("\n");
 }
 
-export function connectChatGPT({ home, appExecutable, appArgs }: { home: string; appExecutable: string; appArgs?: string[] }) {
+export function connectChatGPT({ home, appExecutable, shim }: { home: string; appExecutable: string; shim: string }) {
   const path = codexConfig(home);
   const old = existsSync(path) ? readFileSync(path, "utf8") : "";
-  const next = mergeCodexConfig(old, codexConfigEntry(appExecutable, appArgs));
+  const next = mergeCodexConfig(old, codexConfigEntry(appExecutable, shim));
   if (next === old) return { path, changed: false };
   let backup: string | undefined;
   if (existsSync(path)) copyFileSync(path, (backup = `${path}.bak-${new Date().toISOString().replace(/[:.]/g, "-")}`));

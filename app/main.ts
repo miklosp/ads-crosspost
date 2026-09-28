@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
@@ -7,19 +6,11 @@ import { buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeCon
 import { formatSummary, importData } from "../src/import.ts";
 import type { Settings } from "../src/config.ts";
 import type { Job } from "../src/jobs.ts";
-import { runShim } from "../src/shim.ts";
 import { attentionCount, notificationFor, PLATFORMS, type AppState } from "./attention.ts";
 
 // Tray-resident shell. The engine (job queue, MCP server) runs in a utilityProcess; see docs/DESKTOP-APP.md.
-// --stdio: MCP stdio shim for hosts (no lock, tray or windows); launches the tray app if the daemon is down.
-const STDIO = process.argv.includes("--stdio");
-if (STDIO) runShim({
-  dataDir: app.getPath("userData"),
-  launchApp: () => (process.platform === "darwin" && app.isPackaged
-    ? spawn("open", ["-n", "-g", "-a", resolve(process.execPath, "../../..")], { detached: true, stdio: "ignore" })
-    : spawn(process.execPath, app.isPackaged ? [] : [app.getAppPath()], { detached: true, stdio: "ignore" })).unref(),
-}).then(() => app.exit(0));
-else if (!app.requestSingleInstanceLock()) app.exit(0);
+// Hosts' stdio shim (src/shim.ts) runs as plain node, not through this file.
+if (!app.requestSingleInstanceLock()) app.exit(0);
 
 let tray: Tray;
 let engine: UtilityProcess | undefined;
@@ -108,8 +99,9 @@ function notify(job: Job) {
   note.show();
 }
 
-// Host config command: the app binary; in dev the electron binary plus the app path (only works from this checkout).
-const launch = { appExecutable: process.execPath, appArgs: app.isPackaged ? [] : [app.getAppPath()] };
+// Host config command: the app binary (in dev the electron binary) as node on the compiled shim. Dev configs only
+// work from this checkout.
+const launch = { appExecutable: process.execPath, shim: join(import.meta.dirname, "../src/shim.js") };
 const connect = (fn: () => Promise<void> | void) =>
   Promise.resolve().then(fn).catch((e) => dialog.showErrorBox("Connect failed", String(e))).finally(() => setStatus(status));
 async function connectClaude() {
@@ -178,7 +170,6 @@ app.on("window-all-closed", () => {}); // stay in the tray
 app.on("before-quit", () => { quitting = true; engine?.kill(); });
 
 app.whenReady().then(() => {
-  if (STDIO) return;
   app.dock?.hide();
   tray = new Tray(join(import.meta.dirname, "../../app/assets/trayTemplate.png"));
   setStatus(status);

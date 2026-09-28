@@ -26,7 +26,12 @@ Researched 2026-09-28. Builds on [BACKGROUND-APP.md](BACKGROUND-APP.md) and [MCP
 - **Android: not feasible.** An APK can't drive a headed Chromium with its own profile. At most a remote UI.
 - **Transport:** one daemon (the tray app) serving Streamable HTTP on `127.0.0.1:<port>/mcp`.
   - Security: a bearer token stored in a 0600 file, plus `Origin`/`Host` checks.
-  - A `--stdio` shim mode proxies stdio to the daemon and starts the daemon if it's down.
+  - A stdio shim (`out/src/shim.js`) proxies stdio to the daemon and starts the app if it's down. Hosts run it
+    with the app binary as plain node: `command` = app executable (dev: the electron binary), `args` = [shim path],
+    `env` = `ELECTRON_RUN_AS_NODE=1`. So each host connection is a node process, not an Electron app with a
+    Dock icon. Packaged, the shim loads from inside `app.asar` (tested on an unsigned `--dir` build); this relies
+    on Electron's `runAsNode` fuse, which is on by default and electron-builder leaves alone unless
+    `electronFuses` is set.
 - **Long jobs:** tools return a `job_id` in under 5 s. `wait_for_status(job_id, max_s ≤ 45)` long-polls
   under Claude Desktop's ~60 s cap.
 - **Needs attention:** OS notifications from the tray app. No host shows a server push in an idle chat,

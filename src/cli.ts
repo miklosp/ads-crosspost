@@ -4,14 +4,9 @@ import { openBrowser } from "./browser.ts";
 import { discover } from "./discover.ts";
 import { prepare, publish, type Failed } from "./flow.ts";
 import { log } from "./log.ts";
-import { blocket } from "./platforms/blocket.ts";
-import { facebook } from "./platforms/facebook.ts";
-import { tradera } from "./platforms/tradera.ts";
-import { vinted } from "./platforms/vinted.ts";
+import { FLOWS, flowFor } from "./platforms/index.ts";
 import { FormRejected, type Flow } from "./platforms/types.ts";
-import { loadRecord, PLATFORMS, setListing, type PlatformName } from "./record.ts";
-
-const FLOWS: Partial<Record<PlatformName, Flow>> = { blocket, facebook, tradera, vinted };
+import { loadRecord, PLATFORMS, setListing } from "./record.ts";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -23,12 +18,6 @@ const { values, positionals } = parseArgs({
 });
 const [cmd, ...args] = positionals;
 const arg = args[0];
-
-function flowFor(name: string): Flow {
-  const f = FLOWS[name as PlatformName];
-  if (!f) throw new Error(`no flow for "${name}" (have: ${Object.keys(FLOWS).join(", ")})`);
-  return f;
-}
 
 // exit code semantics: 0 = posted or already posted, 1 = failed
 // browser() opens the platform's browser on first use; the caller closes it after its last item

@@ -34,9 +34,9 @@ const toEngine = (m: object) => engine?.postMessage(m);
 function startEngine() {
   const data = app.getPath("userData");
   browser = undefined;
-  engine = utilityProcess.fork(join(__dirname, "engine.mjs"), [], {
+  engine = utilityProcess.fork(join(import.meta.dirname, "engine.js"), [], {
     serviceName: "Ads Crosspost Engine",
-    env: { ...process.env, ADS_ROOT: app.getAppPath(), ADS_DATA_DIR: data, PLAYWRIGHT_BROWSERS_PATH: join(data, "browsers") },
+    env: { ...process.env, ADS_DATA_DIR: data, PLAYWRIGHT_BROWSERS_PATH: join(data, "browsers") },
   });
   engine.on("spawn", () => engine!.postMessage({ type: "ping" }));
   engine.on("message", (m) => {
@@ -146,11 +146,11 @@ function openWindow(focusJob?: string) {
   if (win) return (win.show(), win.focus(), focus());
   win = new BrowserWindow({
     width: 560, height: 680, title: "Ads Crosspost",
-    webPreferences: { preload: join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
+    webPreferences: { preload: join(import.meta.dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   win.on("closed", () => (win = undefined));
   win.webContents.once("did-finish-load", focus);
-  win.loadFile(join(__dirname, "../index.html"));
+  win.loadFile(join(import.meta.dirname, "../../app/index.html"));
 }
 
 // window → main; arguments are checked since they come from the renderer
@@ -175,7 +175,7 @@ app.on("before-quit", () => { quitting = true; engine?.kill(); });
 app.whenReady().then(() => {
   if (STDIO) return;
   app.dock?.hide();
-  tray = new Tray(join(__dirname, "../assets/trayTemplate.png"));
+  tray = new Tray(join(import.meta.dirname, "../../app/assets/trayTemplate.png"));
   setStatus(status);
   startEngine();
 });

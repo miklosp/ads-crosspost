@@ -16,7 +16,7 @@ Researched 2026-09-28. Builds on [BACKGROUND-APP.md](BACKGROUND-APP.md) and [MCP
   - Nothing else fits (playwright-mcp, browser-use, steel, kernel are LLM-driven or server/cloud).
 - **Stack: Electron + electron-builder.** TS only; Tray/Notification/login items/auto-update built in.
   - patchright runs in a `utilityProcess`.
-  - `src/` is bundled with esbuild.
+  - `app/` and `src/` are compiled with `tsc` into `out/`, no bundler (`pnpm app:build`). `pnpm app:smoke` runs the compiled engine and stdio shim under plain node.
   - `patchright-core` and `sharp`/`@img` go in `asarUnpack`.
   - Tauri + Node sidecar saves ~50 MB but adds Rust. Size is dominated by the ~350 MB browser anyway.
 - **Browser: not bundled.** Either keep patchright Chromium, downloaded on first run into app data via

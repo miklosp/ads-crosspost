@@ -1,4 +1,4 @@
-// Sandboxed preload: the window's only way to reach main. Bundled to CJS; may only require "electron".
+// Sandboxed preload: the window's only way to reach main. Must be CJS (.cts); may only require "electron".
 import { contextBridge, ipcRenderer } from "electron";
 import type { AppState } from "./attention.ts";
 

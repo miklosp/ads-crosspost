@@ -1,7 +1,7 @@
 // App window: status, platform logins, jobs, and review of ready_to_publish jobs. Talks to main via window.api.
 import type { Job } from "../src/jobs.ts";
 import { loginState, newestFirst, PLATFORMS, type AppState } from "./attention.ts";
-import type { Api } from "./preload.ts";
+import type { Api } from "./preload.cts";
 
 const api = (window as unknown as { api: Api }).api;
 const $ = (id: string) => document.getElementById(id)!;

@@ -1,6 +1,5 @@
 allowBuilds:
   electron-winstaller: false
-  esbuild: true
   sharp: false
 supportedArchitectures:
   os: [current]

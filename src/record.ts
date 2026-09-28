@@ -3,8 +3,8 @@ import { join, resolve } from "node:path";
 import { isMap, parseDocument, stringify } from "yaml";
 import { z } from "zod";
 
-// code and static assets; the desktop app's bundle lives elsewhere, so it sets ADS_ROOT to the app path
-export const ROOT = process.env.ADS_ROOT ?? new URL("..", import.meta.url).pathname;
+// code and static assets (src/platforms/*.json, src/prompts/*.md); app:build copies them next to the compiled src/
+export const ROOT = resolve(import.meta.dirname, "..");
 // items/, sessions/, .cache/, config.yaml; the desktop app sets ADS_DATA_DIR, the CLI defaults to the repo
 export const dataDir = (env = process.env) => (env.ADS_DATA_DIR ? resolve(env.ADS_DATA_DIR) : ROOT);
 export const DATA = dataDir();

@@ -52,6 +52,6 @@ export function installError(out: string, code: number | null): string {
 export const unpacked = (p: string) => p.replace(/([\\/])app\.asar([\\/])/, "$1app.asar.unpacked$2");
 
 function cliPath(): string {
-  const req = typeof require === "function" ? require : createRequire(import.meta.url); // cjs bundle vs src
+  const req = createRequire(import.meta.url);
   return unpacked(join(dirname(req.resolve("patchright/package.json")), "cli.js"));
 }

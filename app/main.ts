@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
-import { app, BrowserWindow, ipcMain, Menu, Notification, shell, Tray, utilityProcess, type UtilityProcess } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, shell, Tray, utilityProcess, type UtilityProcess } from "electron";
+import { buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeConnected } from "../src/connect.ts";
 import type { Job } from "../src/jobs.ts";
 import { runShim } from "../src/shim.ts";
 import { attentionCount, notificationFor, PLATFORMS, type AppState } from "./attention.ts";
@@ -72,6 +74,12 @@ function setStatus(s: string) {
       label: "Launch at login", type: "checkbox", checked: app.getLoginItemSettings().openAtLogin,
       click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked }),
     },
+    {
+      label: "Connect", submenu: [
+        { label: "Claude Desktop…", type: "checkbox", checked: isClaudeConnected(homedir()) === true, click: () => void connect(connectClaude) },
+        { label: "ChatGPT desktop", type: "checkbox", checked: isChatGPTConnected(homedir()), click: () => void connect(connectChatGPTApp) },
+      ],
+    },
     { type: "separator" },
     { label: "Quit", click: () => app.quit() },
   ]));
@@ -93,6 +101,22 @@ function notify(job: Job) {
     else openWindow(job.id);
   });
   note.show();
+}
+
+// Host config command: the app binary; in dev the electron binary plus the app path (only works from this checkout).
+const launch = { appExecutable: process.execPath, appArgs: app.isPackaged ? [] : [app.getAppPath()] };
+const connect = (fn: () => Promise<void> | void) =>
+  Promise.resolve().then(fn).catch((e) => dialog.showErrorBox("Connect failed", String(e))).finally(() => setStatus(status));
+async function connectClaude() {
+  const data = app.getPath("userData");
+  const tools = await daemonTools(data).catch(() => undefined);
+  const path = buildMcpb({ ...launch, outDir: data, version: app.getVersion(), tools });
+  const err = await shell.openPath(path); // Claude Desktop shows its install dialog
+  if (err) throw new Error(`${err}\nInstall ${path} from Claude Desktop → Settings → Extensions.`);
+}
+function connectChatGPTApp() {
+  connectChatGPT({ home: homedir(), ...launch });
+  dialog.showMessageBox({ message: "Connected to ChatGPT", detail: "Restart the ChatGPT app. The Ads Crosspost tools appear in Work (Codex) mode, not in Chat." });
 }
 
 let win: BrowserWindow | undefined;

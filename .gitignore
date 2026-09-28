@@ -11,3 +11,4 @@ dist/
 out/
 jobs.json
 .env.op
+.DS_Store

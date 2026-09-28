@@ -38,6 +38,7 @@ test("appDataDir matches Electron userData", () => {
 
 test("proxies tools/list and tools/call; reconnects after a daemon restart", async () => {
   const client = await shim(process.env.ADS_DATA_DIR!);
+  assert.match(client.getInstructions() ?? "", /post_ad prompt/);
   assert.ok((await client.listTools()).tools.some((t) => t.name === "list_items"));
   let r = await client.callTool({ name: "list_items", arguments: {} });
   assert.ok(!r.isError);

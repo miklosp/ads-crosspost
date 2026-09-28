@@ -10,6 +10,7 @@ import {
   CallToolRequestSchema, CallToolResultSchema, GetPromptRequestSchema, GetPromptResultSchema, ListPromptsRequestSchema,
   ListPromptsResultSchema, ListToolsRequestSchema, ListToolsResultSchema, McpError,
 } from "@modelcontextprotocol/sdk/types.js";
+import { INSTRUCTIONS } from "./instructions.ts";
 
 // stdio ⇄ Streamable HTTP proxy for stdio-only MCP hosts (Claude Desktop .mcpb, Codex config). Reads the daemon's
 // port and token from <dataDir>/mcp.json so host configs hold no secrets. Stdout carries protocol only.
@@ -67,7 +68,7 @@ export async function runShim({ dataDir, launchApp }: { dataDir: string; launchA
     }
   };
 
-  const server = new Server({ name: "ads-crosspost", version: "0.1.0" }, { capabilities: { tools: {}, prompts: {} } });
+  const server = new Server({ name: "ads-crosspost", version: "0.1.0" }, { capabilities: { tools: {}, prompts: {} }, instructions: INSTRUCTIONS });
   server.setRequestHandler(ListToolsRequestSchema, (req, { signal }) => forward((c) => c.request(req, ListToolsResultSchema, { signal })));
   server.setRequestHandler(CallToolRequestSchema, (req, { signal }) =>
     forward((c) => c.request(req, CallToolResultSchema, { signal })).catch((e) => {

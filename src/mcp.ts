@@ -1,5 +1,5 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { basename, extname, join, resolve } from "node:path";
@@ -11,12 +11,13 @@ import { z } from "zod";
 import type { createEngine, Job } from "./jobs.ts";
 import { createRecord, DATA, itemDir, loadRecord, PLATFORMS, RecordSchema, ROOT, updateRecord, type PlatformName } from "./record.ts";
 import { INSTRUCTIONS } from "./instructions.ts";
+import { importPhoto, isHeic } from "./photos.ts";
 
 type Engine = ReturnType<typeof createEngine>;
 type Content = CallToolResult["content"];
 
 const CONF = join(DATA, "mcp.json");
-const PHOTO = /\.(jpe?g|png|heic)$/i;
+const PHOTO = /\.(jpe?g|png|hei[cf])$/i;
 const Platform = z.enum(PLATFORMS as [PlatformName, ...PlatformName[]]);
 const Slug = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/).describe("item slug, lowercase kebab-case");
 
@@ -99,7 +100,7 @@ function buildServer(engine: Engine) {
   });
 
   s.registerTool("add_photos", {
-    description: "Copy photos (jpg/jpeg/png/heic) from a folder or explicit file paths into items/<slug>/photos/ and return thumbnails so you can see them. " +
+    description: "Copy photos (jpg/jpeg/png/heic; HEIC is converted to JPEG) from a folder or explicit file paths into items/<slug>/photos/ and return thumbnails so you can see them. " +
       "Works before create_item. If the item exists, the photos are appended to its record.",
     inputSchema: {
       slug: Slug,
@@ -114,11 +115,12 @@ function buildServer(engine: Engine) {
     const dir = join(itemDir(slug), "photos");
     mkdirSync(dir, { recursive: true });
     let n = readdirSync(dir).length;
-    const added = src.map((from) => {
-      const rel = `photos/${String(++n).padStart(2, "0")}${extname(from).toLowerCase()}`;
-      copyFileSync(from, join(itemDir(slug), rel));
-      return { from: basename(from), rel };
-    });
+    const added = [];
+    for (const from of src) {
+      const rel = `photos/${String(++n).padStart(2, "0")}${isHeic(from) ? ".jpg" : extname(from).toLowerCase()}`;
+      await importPhoto(from, join(itemDir(slug), rel));
+      added.push({ from: basename(from), rel });
+    }
     if (existsSync(join(itemDir(slug), "item.yaml")))
       updateRecord(slug, { photos: [...loadRecord(slug).photos, ...added.map((a) => a.rel)] });
     const out: Content = [text(`Copied into items/${slug}/:\n${added.map((a) => `${a.rel} (from ${a.from})`).join("\n")}`)];

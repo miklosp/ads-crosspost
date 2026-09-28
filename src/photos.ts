@@ -1,5 +1,6 @@
-import { mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import decodeHeic from "heic-decode";
 import sharp from "sharp";
 import { itemDir, type PlatformName, type Record } from "./record.ts";
 
@@ -21,4 +22,13 @@ export async function preparePhotos(slug: string, rec: Record, p: PlatformName, 
     out.push(dest);
   }
   return out;
+}
+
+export const isHeic = (f: string) => /\.hei[cf]$/i.test(f);
+
+// Copies a photo; HEIC/HEIF (undecodable by prebuilt sharp) becomes JPEG. libheif applies irot/imir, and raw pixels carry no metadata.
+export async function importPhoto(from: string, dest: string) {
+  if (!isHeic(from)) return copyFileSync(from, dest);
+  const { width, height, data } = await decodeHeic({ buffer: readFileSync(from) });
+  await sharp(data, { raw: { width, height, channels: 4 } }).jpeg({ quality: 92 }).toFile(dest);
 }

@@ -11,6 +11,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.1
         version: 1.30.1(supports-color@7.2.0)(zod@4.6.1)
+      heic-decode:
+        specifier: ^2.1.0
+        version: 2.1.0
       patchright:
         specifier: ^1.55.0
         version: 1.63.0
@@ -994,6 +997,10 @@ packages:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
 
+  heic-decode@2.1.0:
+    resolution: {integrity: sha512-0fB3O3WMk38+PScbHLVp66jcNhsZ/ErtQ6u2lMYu/YxXgbBtl+oKOhGQHa4RpvE68k8IzbWkABzHnyAIjR758A==}
+    engines: {node: '>=8.0.0'}
+
   hono@4.13.9:
     resolution: {integrity: sha512-7dMkQmZoC4E6F7AtaQSPhlWAdnBti+j7rreMZl8QB4jFiEhP9TWbGWUMi8WYzBCgmgulxuvLQupKqo+Co6Omyg==}
     engines: {node: '>=16.9.0'}
@@ -1113,6 +1120,10 @@ packages:
 
   lazy-val@1.0.5:
     resolution: {integrity: sha512-0/BnGCCfyUMkBpeDgWihanIAF9JmZhHBgUhEqzvf+adhNGLoP6TaiI5oF8oyb3I45P+PcnrqihSf01M0l0G5+Q==}
+
+  libheif-js@1.23.2:
+    resolution: {integrity: sha512-qvHIXtggEsw1lCNCWBYKloL2Z36DJBm0R9ThGiH2JnhKYdeZFLPFkP30Lw4yMskxxhx0bKg1gLrBHX1D2w2pSw==}
+    engines: {node: '>=8.0.0'}
 
   lodash@4.18.1:
     resolution: {integrity: sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==}
@@ -2723,6 +2734,10 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
+  heic-decode@2.1.0:
+    dependencies:
+      libheif-js: 1.23.2
+
   hono@4.13.9: {}
 
   hosted-git-info@4.1.0:
@@ -2829,6 +2844,8 @@ snapshots:
       json-buffer: 3.0.1
 
   lazy-val@1.0.5: {}
+
+  libheif-js@1.23.2: {}
 
   lodash@4.18.1: {}
 

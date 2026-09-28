@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdirSync, mkdtempSync, readFileSync, statSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
@@ -121,6 +121,18 @@ test("create → prepare → ready with screenshot → publish → posted", asyn
   assert.equal(json(r).state, "posted");
   assert.equal(loadRecord("lamp").listings.tradera?.status, "posted");
   assert.equal(json(await call("list_items"))[0].listings.tradera.status, "posted");
+});
+
+test("add_photos converts HEIC to upright JPEG", async () => {
+  // fixture: `sips -s format heic` of a 64x32 red|blue JPEG with EXIF orientation 6 (stored as irot)
+  const r = await call("add_photos", { slug: "heic", paths: [join(import.meta.dirname, "fixtures", "rotated.heic")] });
+  assert.equal(r.content.filter((c) => c.type === "image").length, 1);
+  assert.deepEqual(readdirSync(join(DATA, "items", "heic", "photos")), ["01.jpg"]);
+  const img = sharp(join(DATA, "items", "heic", "photos", "01.jpg"));
+  const meta = await img.metadata();
+  assert.deepEqual([meta.format, meta.width, meta.height, meta.exif], ["jpeg", 32, 64, undefined]);
+  const { data } = await img.raw().toBuffer({ resolveWithObject: true });
+  assert.ok(data[0] > 200 && data[2] < 50, "top is red");
 });
 
 test("instructions and post_ad prompt", async () => {

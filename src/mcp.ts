@@ -54,8 +54,23 @@ async function jobResult(job: Job): Promise<CallToolResult> {
   return { content: out };
 }
 
+const INSTRUCTIONS = `Posts used-item ads to Blocket, Tradera, Facebook Marketplace and Vinted. For the full interview and ad-writing rules, use the post_ad prompt.
+
+Workflow per item:
+1. add_photos(slug, folder) and look at the thumbnails.
+2. Ask the user for missing facts (type, brand/model, condition + defects, price SEK and negotiable, location, shipping) in one batched question.
+3. Write title + description in Swedish (sv) and English (en): same facts, natural rewrite, no price/location/shipping in the description. Get the user's OK on the text.
+4. Per platform: search_categories, then get_category_fields (search_options for long lists). Use paths and values verbatim; never invent them.
+5. create_item (update_item to change it later).
+6. One platform at a time: prepare_post, then wait_for_status until it settles.
+   - ready_to_publish: show the screenshot and ask for explicit approval. Call publish only on a clear yes, then wait_for_status until posted. Never publish without approval.
+   - needs_login: call login(platform), ask the user to log in in the browser window that opens, wait for logged_in, then prepare_post again.
+   - failed: report the step and error to the user. Don't retry blindly.`;
+
+const PROMPT = readFileSync(join(ROOT, "src", "prompts", "post_ad.md"), "utf8");
+
 function buildServer(engine: Engine) {
-  const s = new McpServer({ name: "ads-crosspost", version: "0.1.0" });
+  const s = new McpServer({ name: "ads-crosspost", version: "0.1.0" }, { instructions: INSTRUCTIONS });
   const ro = { readOnlyHint: true };
 
   s.registerTool("list_items", { description: "List all items with status and per-platform listing status.", annotations: ro }, async () => {
@@ -191,6 +206,13 @@ function buildServer(engine: Engine) {
 
   s.registerTool("cancel", { description: "Cancel a job and close its browser page; a filled form is abandoned.", inputSchema: { job_id: z.string() } },
     async ({ job_id }) => ok(text(await engine.cancel(job_id))));
+
+  s.registerPrompt("post_ad", {
+    description: "Interview the user about an item, write the ad in Swedish and English, save it and post it with approval.",
+    argsSchema: { folder: z.string().optional().describe("folder with the item's photos") },
+  }, ({ folder }) => ({
+    messages: [{ role: "user", content: { type: "text", text: PROMPT + (folder ? `\nPhotos are in: ${folder}\n` : "") } }],
+  }));
 
   s.registerTool("list_jobs", { description: "All jobs, newest last.", annotations: ro }, async () => ok(text(engine.list())));
 

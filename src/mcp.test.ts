@@ -123,6 +123,17 @@ test("create → prepare → ready with screenshot → publish → posted", asyn
   assert.equal(json(await call("list_items"))[0].listings.tradera.status, "posted");
 });
 
+test("instructions and post_ad prompt", async () => {
+  assert.match(client.getInstructions() ?? "", /publish/);
+  const { prompts } = await client.listPrompts();
+  assert.deepEqual(prompts.map((p) => p.name), ["post_ad"]);
+  assert.equal(prompts[0].arguments?.[0]?.name, "folder");
+  const r = await client.getPrompt({ name: "post_ad", arguments: { folder: "/tmp/photos" } });
+  const t = (r.messages[0].content as { text: string }).text;
+  assert.match(t, /search_categories/);
+  assert.match(t, /Photos are in: \/tmp\/photos/);
+});
+
 test("rejects missing token, foreign Origin, foreign Host", async () => {
   const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" });
   const headers = { "content-type": "application/json", accept: "application/json, text/event-stream" };

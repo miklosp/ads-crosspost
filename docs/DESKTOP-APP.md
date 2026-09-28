@@ -59,6 +59,8 @@ content could inject prompts into a tool that can write.
 ## Signing
 
 - macOS: Developer ID + notarization, $99/yr. Without it the user allows the app in System Settings
-  and electron-updater can't auto-update.
+  and electron-updater can't auto-update. Since Electron 42, macOS notifications (UNNotification)
+  are only shown for signed apps; unsigned builds get a `failed` event, so the tray's "N need
+  attention" line and the window are the only signals.
 - Windows: Azure Artifact Signing is for individuals in the US/Canada only. From Sweden that means an
   org or an OV certificate. Unsigned builds get SmartScreen warnings.

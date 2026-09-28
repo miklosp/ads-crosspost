@@ -8,21 +8,32 @@ let tray: Tray;
 let engine: UtilityProcess | undefined;
 let status = "Engine starting…";
 let quitting = false;
+let browser: string | undefined; // Chromium status until it's ready
 
 function startEngine() {
   const data = app.getPath("userData");
+  browser = undefined;
   engine = utilityProcess.fork(join(__dirname, "engine.cjs"), [], {
     serviceName: "Ads Crosspost Engine",
     env: { ...process.env, ADS_DATA_DIR: data, PLAYWRIGHT_BROWSERS_PATH: join(data, "browsers") },
   });
   engine.on("spawn", () => engine!.postMessage({ type: "ping" }));
-  engine.on("message", (m) => { if (m?.type === "pong") setStatus("Engine running"); });
+  engine.on("message", (m) => {
+    if (m?.type === "chromium") browser = chromiumStatus(m);
+    if (m?.type === "pong" || m?.type === "chromium") setStatus(browser ?? "Engine running");
+  });
   engine.on("exit", (code) => {
     engine = undefined;
     if (quitting) return;
     setStatus(`Engine exited (${code}), restarting…`);
     setTimeout(startEngine, 1000);
   });
+}
+
+function chromiumStatus(m: { state: string; percent?: number; message?: string }): string | undefined {
+  if (m.state === "checking") return "Checking Chromium…";
+  if (m.state === "downloading") return `Downloading Chromium… ${m.percent}%`;
+  if (m.state === "error") return m.message;
 }
 
 function setStatus(s: string) {

@@ -1,30 +1,29 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { BrowserContext, Page } from "patchright";
+import type { Page } from "patchright";
 import { config } from "./config.ts";
-import { log } from "./log.ts";
 import { preparePhotos } from "./photos.ts";
 import { adText, itemDir, loadRecord, setListing } from "./record.ts";
 import { FormRejected, type Ctx, type Flow, type Step } from "./platforms/types.ts";
 
-// exit code semantics: 0 = posted or already posted, 1 = failed
-// browser() opens the platform's browser on first use; the caller closes it after its last item
-export async function runPost(flow: Flow, slug: string, opts: { dryRun: boolean }, browser: () => Promise<BrowserContext>): Promise<number> {
+export type Handle = { flow: Flow; slug: string; page: Page; ctx: Ctx; rest: Step[] };
+export type Failed = { kind: "failed"; step: string; error: unknown; dir: string };
+export type Prepared =
+  | { kind: "ready"; handle: Handle; screenshot: string }
+  | { kind: "already_posted"; url?: string }
+  | { kind: "blocked"; reason: "submitted" | "no_platform_block" }
+  | Failed;
+export type Published = { kind: "posted"; url?: string; id?: string } | Failed;
+
+// Fills the form up to (not incl.) "submit" and screenshots it. newPage() is called only once the guards pass;
+// the caller closes that page. opts.dryRun lets a "submitted" listing be refilled, since nothing will be published.
+export async function prepare(flow: Flow, slug: string, newPage: () => Promise<Page>, opts: { dryRun?: boolean } = {}): Promise<Prepared> {
   const p = flow.platform;
   const rec = loadRecord(slug);
   const existing = rec.listings[p];
-  if (existing?.status === "posted") {
-    log(`${p} posted ${existing.url}`);
-    return 0;
-  }
-  if (existing?.status === "submitted" && !opts.dryRun) {
-    log(`${p} has status "submitted" without a url — check the site manually, then \`pnpm post ${slug} --platform ${p} --reset\``);
-    return 1;
-  }
-  if (!rec.platforms[p]) {
-    log(`${p}: no platforms.${p} block in item.yaml`);
-    return 1;
-  }
+  if (existing?.status === "posted") return { kind: "already_posted", url: existing.url };
+  if (existing?.status === "submitted" && !opts.dryRun) return { kind: "blocked", reason: "submitted" };
+  if (!rec.platforms[p]) return { kind: "blocked", reason: "no_platform_block" };
 
   const ctx: Ctx = {
     record: rec,
@@ -35,52 +34,52 @@ export async function runPost(flow: Flow, slug: string, opts: { dryRun: boolean 
     result: {},
   };
 
-  // fresh tab per item: a failed run leaves a half-filled form, and close() skips its beforeunload prompt
-  const page = await (await browser()).newPage();
-  let submitted = false;
-  const fail = async (step: Step, e: unknown) => {
-    const dir = await dumpFailure(page, slug, p, step, e);
-    // once submit has run the ad may be live: keep "submitted" so a rerun refuses instead of double-posting,
-    // unless the site visibly refused the form
-    const status = submitted && !(e instanceof FormRejected) ? "submitted" : "failed";
-    setListing(slug, p, { status, failed_step: step.name, flow_version: flow.version });
-    const why = e instanceof FormRejected ? `: ${e.message}` : "";
-    log(`${p} FAILED at step "${step.name}"${why} — see ${dir}/`);
-    return 1;
-  };
-  try {
-    for (const step of flow.post) {
-      if (step.name === "submit") {
-        const errors = (await flow.formErrors?.(page)) ?? [];
-        if (errors.length) return await fail({ name: "validate", run: async () => {} }, new FormRejected(errors.join("; ")));
-        if (opts.dryRun) {
-          const dir = runDir(slug, p);
-          await page.screenshot({ path: join(dir, "dry-run.png"), fullPage: true });
-          log(`${p} dry-run ok — see ${dir}/dry-run.png`);
-          return 0;
-        }
-        setListing(slug, p, { status: "submitted", flow_version: flow.version });
-        submitted = true;
-      }
-      try {
-        await page.waitForTimeout(300 + Math.random() * 500); // pacing jitter between steps
-        await step.run(page, ctx);
-      } catch (e) {
-        return await fail(step, e);
-      }
+  const page = await newPage();
+  const i = flow.post.findIndex((s) => s.name === "submit");
+  const handle: Handle = { flow, slug, page, ctx, rest: i < 0 ? [] : flow.post.slice(i) };
+  const failed = await runSteps(handle, i < 0 ? flow.post : flow.post.slice(0, i), false);
+  if (failed) return failed;
+  const errors = (await flow.formErrors?.(page)) ?? [];
+  if (errors.length) return fail(handle, { name: "validate", run: async () => {} }, new FormRejected(errors.join("; ")), false);
+  const screenshot = join(runDir(slug, p), "ready.png");
+  await page.screenshot({ path: screenshot, fullPage: true });
+  return { kind: "ready", handle, screenshot };
+}
+
+// Clicks submit and runs the remaining steps (capture_url etc.) on the page prepare() filled.
+export async function publish(handle: Handle): Promise<Published> {
+  const { flow, slug, ctx } = handle;
+  setListing(slug, flow.platform, { status: "submitted", flow_version: flow.version });
+  const failed = await runSteps(handle, handle.rest, true);
+  if (failed) return failed;
+  setListing(slug, flow.platform, {
+    status: "posted",
+    url: ctx.result.url,
+    id: ctx.result.id,
+    posted_at: new Date().toISOString(),
+    flow_version: flow.version,
+  });
+  return { kind: "posted", url: ctx.result.url, id: ctx.result.id };
+}
+
+async function runSteps(handle: Handle, steps: Step[], submitted: boolean) {
+  for (const step of steps) {
+    try {
+      await handle.page.waitForTimeout(300 + Math.random() * 500); // pacing jitter between steps
+      await step.run(handle.page, handle.ctx);
+    } catch (e) {
+      return fail(handle, step, e, submitted);
     }
-    setListing(slug, p, {
-      status: "posted",
-      url: ctx.result.url,
-      id: ctx.result.id,
-      posted_at: new Date().toISOString(),
-      flow_version: flow.version,
-    });
-    log(`${p} posted ${ctx.result.url}`);
-    return 0;
-  } finally {
-    await page.close();
   }
+}
+
+async function fail({ flow, slug, page }: Handle, step: Step, e: unknown, submitted: boolean): Promise<Failed> {
+  const dir = await dumpFailure(page, slug, flow.platform, step, e);
+  // once submit has run the ad may be live: keep "submitted" so a rerun refuses instead of double-posting,
+  // unless the site visibly refused the form
+  const status = submitted && !(e instanceof FormRejected) ? "submitted" : "failed";
+  setListing(slug, flow.platform, { status, failed_step: step.name, flow_version: flow.version });
+  return { kind: "failed", step: step.name, error: e, dir };
 }
 
 function runDir(slug: string, p: string) {

@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, shell, Tray, utilityProcess, type UtilityProcess } from "electron";
 import { buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeConnected } from "../src/connect.ts";
+import { formatSummary, importData } from "../src/import.ts";
 import type { Job } from "../src/jobs.ts";
 import { runShim } from "../src/shim.ts";
 import { attentionCount, notificationFor, PLATFORMS, type AppState } from "./attention.ts";
@@ -80,6 +81,7 @@ function setStatus(s: string) {
         { label: "ChatGPT desktop", type: "checkbox", checked: isChatGPTConnected(homedir()), click: () => void connect(connectChatGPTApp) },
       ],
     },
+    { label: "Import from folder…", click: () => void importFolder() },
     { type: "separator" },
     { label: "Quit", click: () => app.quit() },
   ]));
@@ -117,6 +119,25 @@ async function connectClaude() {
 function connectChatGPTApp() {
   connectChatGPT({ home: homedir(), ...launch });
   dialog.showMessageBox({ message: "Connected to ChatGPT", detail: "Restart the ChatGPT app. The Ads Crosspost tools appear in Work (Codex) mode, not in Chat." });
+}
+
+// Copies a CLI checkout's items/, sessions/ and config.yaml into userData (src/import.ts). The engine's browsers
+// hold the profiles open, so they're closed first.
+async function importFolder() {
+  const pick = await dialog.showOpenDialog({ title: "Import from an ads-crosspost folder", properties: ["openDirectory"] });
+  if (pick.canceled || !pick.filePaths[0]) return;
+  const e = engine;
+  if (e) await new Promise<void>((res) => {
+    const done = (m: { type?: string }) => m?.type === "browsersClosed" && (e.off("message", done), res());
+    e.on("message", done).once("exit", () => res());
+    e.postMessage({ type: "closeBrowsers" });
+  });
+  try {
+    const s = await importData(pick.filePaths[0], app.getPath("userData"));
+    dialog.showMessageBox({ message: "Import finished", detail: formatSummary(s) });
+  } catch (err) {
+    dialog.showErrorBox("Import failed", err instanceof Error ? err.message : String(err));
+  }
 }
 
 let win: BrowserWindow | undefined;

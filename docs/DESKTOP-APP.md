@@ -64,3 +64,21 @@ content could inject prompts into a tool that can write.
   attention" line and the window are the only signals.
 - Windows: Azure Artifact Signing is for individuals in the US/Canada only. From Sweden that means an
   org or an OV certificate. Unsigned builds get SmartScreen warnings.
+
+## Importing a CLI checkout
+
+`src/import.ts` copies a checkout's `items/`, `sessions/<platform>/` and `config.yaml` into the app's data
+folder. The app runs the same patchright Chromium build, so the sites see the same device and the logins
+keep working. Cookies can be copied because patchright launches Chromium with `--use-mock-keychain`.
+
+- Tray → **Import from folder…** closes the engine's browsers, then imports.
+- CLI: `pnpm import-data <checkout> [--overwrite]` imports into the app data folder (`ADS_DATA_DIR` is
+  honoured). Quit the tray app first.
+- Items whose slug already exists are skipped. A platform profile that already exists in the app is
+  kept unless `--overwrite` is passed; the tray never overwrites.
+- A profile with a `SingletonLock` (Chromium has it open) is refused, on either side.
+- Regenerable caches are left out: `Cache`, `Code Cache`, `GPUCache`, `DawnGraphiteCache`,
+  `DawnWebGPUCache`, `Service Worker/CacheStorage` in each profile, plus `GPUPersistentCache`,
+  `GraphiteDawnCache`, `GrShaderCache`, `ShaderCache`, `component_crx_cache`, `extensions_crx_cache`,
+  `Crashpad` and `BrowserMetrics*` at the top level. Cookies, Local Storage, IndexedDB and Session
+  Storage are kept.

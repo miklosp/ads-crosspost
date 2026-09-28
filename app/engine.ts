@@ -10,12 +10,14 @@ const port = process.parentPort as Electron.ParentPort | undefined;
 const post = (m: object) => (port ? port.postMessage(m) : console.error(JSON.stringify(m)));
 const chromium = (m: object) => post({ type: "chromium", ...m });
 let engine: ReturnType<typeof createEngine> | undefined;
+let browsers: ReturnType<typeof browserManager> | undefined;
 
 console.error("engine started");
 port?.on("message", ({ data: m }) => {
   const fail = (e: unknown) => post({ type: "error", message: e instanceof Error ? e.message : String(e) });
   try {
     if (m?.type === "ping") post({ type: "pong" });
+    else if (m?.type === "closeBrowsers") (browsers?.closeAll() ?? Promise.resolve()).catch(fail).finally(() => post({ type: "browsersClosed" }));
     else if (m?.type === "list") post({ type: "jobs", jobs: engine?.list() ?? [] });
     else if (!engine) throw new Error("engine not ready");
     else if (m.type === "login") engine.login(m.platform);
@@ -28,11 +30,11 @@ port?.on("message", ({ data: m }) => {
 setInterval(() => {}, 2 ** 31 - 1); // stay up (and don't respawn-loop) if Chromium setup fails
 
 async function start() {
-  const browsers = browserManager();
+  browsers = browserManager();
   engine = createEngine({ flows: FLOWS, browsers });
   engine.on("change", (job) => post({ type: "job", job }));
   const mcp = await startMcpServer({ engine });
-  process.once("SIGTERM", () => void Promise.all([browsers.closeAll(), mcp.close()]).finally(() => process.exit(0)));
+  process.once("SIGTERM", () => void Promise.all([browsers!.closeAll(), mcp.close()]).finally(() => process.exit(0)));
   post({ type: "mcp", url: mcp.url });
 }
 

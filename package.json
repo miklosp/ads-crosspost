@@ -7,6 +7,7 @@
     "post": "node src/cli.ts post",
     "login": "node src/cli.ts login",
     "discover": "node src/cli.ts discover",
+    "import-data": "node src/import.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
     "app:build-js": "esbuild app/main.ts --bundle --platform=node --format=cjs --outfile=app/dist/main.cjs --external:electron && esbuild app/preload.ts --bundle --platform=node --format=cjs --outfile=app/dist/preload.cjs --external:electron && esbuild app/renderer.ts --bundle --platform=browser --format=iife --outfile=app/dist/renderer.js && esbuild app/engine.ts --bundle --platform=node --format=esm --outfile=app/dist/engine.mjs --external:patchright --external:patchright-core --external:sharp \"--banner:js=import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\"",

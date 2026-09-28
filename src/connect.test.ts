@@ -2,53 +2,46 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { after, test } from "node:test";
-import { strFromU8, unzipSync } from "fflate";
-import type { BrowserContext } from "patchright";
-import { parse } from "yaml";
-
-process.env.ADS_DATA_DIR = mkdtempSync(join(tmpdir(), "ads-connect-"));
-const { createEngine } = await import("./jobs.ts");
-const { startMcpServer } = await import("./mcp.ts");
-const { buildCoworkPlugin, buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeConnected } = await import("./connect.ts");
+import { test } from "node:test";
+import { connectChatGPT, connectClaude, isChatGPTConnected, isClaudeConnected } from "./connect.ts";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "ads-connect-"));
 const APP = "/Applications/Ads Crosspost.app/Contents/MacOS/Ads Crosspost";
 const SHIM = "/Applications/Ads Crosspost.app/Contents/Resources/app.asar/out/src/shim.js";
+const ENTRY = { command: APP, args: [SHIM], env: { ELECTRON_RUN_AS_NODE: "1" } };
 
-test("mcpb holds a manifest that runs the shim with the app binary as node, tools from the daemon", async () => {
-  const mcp = await startMcpServer({ engine: createEngine({ flows: {}, browsers: { get: async () => ({}) as BrowserContext, lease: () => () => {}, closeUnused: async () => {}, reveal: async () => {} }, pace: () => 0 }), port: 0 });
-  after(() => mcp.close());
-  const tools = await daemonTools(process.env.ADS_DATA_DIR!);
-  assert.ok(tools.some((t) => t.name === "prepare_post" && t.description));
+const claudeJson = (dir: string) => join(dir, "claude_desktop_config.json");
+const claudeBackups = (dir: string) => readdirSync(dir).filter((f) => f.startsWith("claude_desktop_config.json.bak-"));
 
-  const path = buildMcpb({ appExecutable: APP, shim: SHIM, outDir: tmp(), version: "1.2.3", tools });
-  const files = unzipSync(readFileSync(path));
-  assert.deepEqual(Object.keys(files), ["manifest.json"]);
-  const m = JSON.parse(strFromU8(files["manifest.json"]));
-  for (const k of ["manifest_version", "name", "version", "description", "author", "server"]) assert.ok(m[k], k);
-  assert.equal(m.name, "ads-crosspost");
-  assert.equal(m.version, "1.2.3");
-  assert.ok(m.author.name);
-  assert.deepEqual(m.server, { type: "binary", entry_point: APP, mcp_config: { command: APP, args: [SHIM], env: { ELECTRON_RUN_AS_NODE: "1" } } });
-  assert.deepEqual(m.compatibility.platforms, ["darwin", "win32"]);
-  assert.deepEqual(m.tools, tools);
+test("claude: creates config in a missing dir", () => {
+  const dir = join(tmp(), "Claude");
+  assert.equal(isClaudeConnected(dir), false);
+  const r = connectClaude({ claudeDir: dir, appExecutable: APP, shim: SHIM });
+  assert.deepEqual([r.changed, r.backup], [true, undefined]);
+  assert.equal(readFileSync(claudeJson(dir), "utf8"), JSON.stringify({ mcpServers: { "ads-crosspost": ENTRY } }, null, 2) + "\n");
+  assert.equal(isClaudeConnected(dir), true);
 });
 
-test("cowork plugin zip: manifest, .mcp.json running the shim, post-ad skill without angle brackets in frontmatter", () => {
-  const files = unzipSync(readFileSync(buildCoworkPlugin({ appExecutable: APP, shim: SHIM, outDir: tmp(), version: "1.2.3" })));
-  assert.deepEqual(Object.keys(files).sort(), [".claude-plugin/plugin.json", ".mcp.json", "skills/post-ad/SKILL.md"]);
-  const m = JSON.parse(strFromU8(files[".claude-plugin/plugin.json"]));
-  assert.deepEqual([m.name, m.version, !!m.description, !!m.author.name], ["ads-crosspost", "1.2.3", true, true]);
-  assert.deepEqual(JSON.parse(strFromU8(files[".mcp.json"])),
-    { mcpServers: { "ads-crosspost": { command: APP, args: [SHIM], env: { ELECTRON_RUN_AS_NODE: "1" } } } });
-  const skill = strFromU8(files["skills/post-ad/SKILL.md"]);
-  const [, front, body] = skill.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)!;
-  const meta = parse(front);
-  assert.equal(meta.name, "post-ad");
-  assert.ok(meta.description.length > 20 && meta.description.length <= 1024);
-  assert.doesNotMatch(front, /[<>]/);
-  assert.equal(body.trim(), readFileSync(join(import.meta.dirname, "prompts", "post_ad.md"), "utf8").trim());
+test("claude: keeps other servers and keys, backs up only on change, idempotent", () => {
+  const dir = tmp();
+  const before = JSON.stringify({ globalShortcut: "Cmd+Space", mcpServers: { other: { command: "npx", args: ["x"] }, "ads-crosspost": { command: "/old" } } });
+  writeFileSync(claudeJson(dir), before);
+  const r = connectClaude({ claudeDir: dir, appExecutable: APP, shim: SHIM });
+  assert.equal(r.changed, true);
+  assert.equal(readFileSync(r.backup!, "utf8"), before);
+  assert.deepEqual(JSON.parse(readFileSync(claudeJson(dir), "utf8")),
+    { globalShortcut: "Cmd+Space", mcpServers: { other: { command: "npx", args: ["x"] }, "ads-crosspost": ENTRY } });
+  assert.equal(connectClaude({ claudeDir: dir, appExecutable: APP, shim: SHIM }).changed, false);
+  assert.equal(claudeBackups(dir).length, 1);
+});
+
+test("claude: refuses invalid JSON and leaves it alone", () => {
+  const dir = tmp();
+  writeFileSync(claudeJson(dir), "{ nope");
+  assert.throws(() => connectClaude({ claudeDir: dir, appExecutable: APP, shim: SHIM }), /not valid JSON/);
+  assert.equal(readFileSync(claudeJson(dir), "utf8"), "{ nope");
+  assert.deepEqual(claudeBackups(dir), []);
+  assert.equal(isClaudeConnected(dir), false);
 });
 
 const read = (home: string) => readFileSync(join(home, ".codex", "config.toml"), "utf8");
@@ -118,17 +111,4 @@ test("codex: appends after existing content", () => {
   assert.equal(isChatGPTConnected(home), false);
   connectChatGPT({ home, appExecutable: APP, shim: SHIM });
   assert.match(read(home), /^\[mcp_servers\.ads-crosspost-other\]\ncommand = "x"\n\n\[mcp_servers\.ads-crosspost\]\n/);
-});
-
-test("isClaudeConnected reads Claude Desktop's extension registry", () => {
-  const home = tmp();
-  assert.equal(isClaudeConnected(home, "darwin"), "unknown");
-  const dir = join(home, "Library", "Application Support", "Claude");
-  mkdirSync(join(dir, "Claude Extensions"), { recursive: true });
-  assert.equal(isClaudeConnected(home, "darwin"), false);
-  mkdirSync(join(dir, "Claude Extensions", "local.mcpb.ads-crosspost.ads-crosspost"));
-  assert.equal(isClaudeConnected(home, "darwin"), true);
-  writeFileSync(join(dir, "extensions-installations.json"), JSON.stringify({ extensions: { "local.mcpb.x.other": {} } }));
-  assert.equal(isClaudeConnected(home, "darwin"), false);
-  assert.equal(isClaudeConnected(home, "win32", { APPDATA: join(home, "Library", "Application Support") }), false);
 });

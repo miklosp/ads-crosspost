@@ -3,7 +3,8 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, shell, Tray, utilityProcess, type UtilityProcess } from "electron";
-import { buildCoworkPlugin, buildMcpb, connectChatGPT, daemonTools, isChatGPTConnected, isClaudeConnected } from "../src/connect.ts";
+import { connectChatGPT, connectClaude, isChatGPTConnected, isClaudeConnected } from "../src/connect.ts";
+import { claudeDir } from "../src/photos-paths.ts";
 import { formatSummary, importData } from "../src/import.ts";
 import type { Settings } from "../src/config.ts";
 import type { Job } from "../src/jobs.ts";
@@ -73,8 +74,7 @@ function setStatus(s: string) {
     },
     {
       label: "Connect", submenu: [
-        { label: "Claude Desktop…", type: "checkbox", checked: isClaudeConnected(homedir()) === true, click: () => void connect(connectClaude) },
-        { label: "Claude Cowork…", click: () => void connect(connectCowork) },
+        { label: "Claude Desktop (chat + Cowork)", type: "checkbox", checked: isClaudeConnected(claudeDir(homedir())), click: () => void connect(connectClaudeApp) },
         { label: "ChatGPT desktop", type: "checkbox", checked: isChatGPTConnected(homedir()), click: () => void connect(connectChatGPTApp) },
       ],
     },
@@ -107,22 +107,13 @@ function notify(job: Job) {
 const launch = { appExecutable: process.execPath, shim: join(import.meta.dirname, "../src/shim.js") };
 const connect = (fn: () => Promise<void> | void) =>
   Promise.resolve().then(fn).catch((e) => dialog.showErrorBox("Connect failed", String(e))).finally(() => setStatus(status));
-async function connectClaude() {
-  const data = app.getPath("userData");
-  const tools = await daemonTools(data).catch(() => undefined);
-  const path = buildMcpb({ ...launch, outDir: data, version: app.getVersion(), tools });
-  const err = await shell.openPath(path); // Claude Desktop shows its install dialog
-  if (err) throw new Error(`${err}\nInstall ${path} from Claude Desktop → Settings → Extensions.`);
-}
-function connectCowork() {
-  const path = buildCoworkPlugin({ ...launch, outDir: app.getPath("userData"), version: app.getVersion() });
-  shell.showItemInFolder(path);
+function connectClaudeApp() {
+  connectClaude({ claudeDir: claudeDir(homedir()), ...launch });
   const inbox = settings?.inbox;
   if (inbox) mkdirSync(inbox, { recursive: true });
   dialog.showMessageBox({
-    message: "Cowork plugin ready",
-    detail: `In Claude Desktop: Customize → Plugins → Add → Upload plugin, pick this file:\n${path}\n\n` +
-      `Then attach your inbox folder (${inbox ?? "see Settings"}) to Cowork tasks.`,
+    message: "Connected to Claude Desktop",
+    detail: `Restart Claude Desktop to load Ads Crosspost. In Cowork, attach your inbox folder (${inbox ?? "see Settings"}) to a task.`,
   });
 }
 function connectChatGPTApp() {

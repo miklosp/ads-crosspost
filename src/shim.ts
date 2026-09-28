@@ -13,7 +13,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { INSTRUCTIONS } from "./instructions.ts";
 
-// stdio ⇄ Streamable HTTP proxy for stdio-only MCP hosts (Claude Desktop .mcpb, Codex config). Hosts run it with the
+// stdio ⇄ Streamable HTTP proxy for stdio-only MCP hosts (Claude Desktop, Codex config). Hosts run it with the
 // app's binary as plain node (ELECTRON_RUN_AS_NODE=1, see connect.ts): no Electron app or Dock icon per connection.
 // Reads the daemon's port and token from <dataDir>/mcp.json so host configs hold no secrets. Stdout carries protocol only.
 

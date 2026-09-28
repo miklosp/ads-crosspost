@@ -9,3 +9,4 @@ items/
 config.yaml
 dist/
 app/dist/
+jobs.json

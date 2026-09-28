@@ -3,6 +3,7 @@ import type { BrowserContext } from "patchright";
 import { openBrowser } from "./browser.ts";
 import { discover } from "./discover.ts";
 import { runPost } from "./flow.ts";
+import { log } from "./log.ts";
 import { blocket } from "./platforms/blocket.ts";
 import { facebook } from "./platforms/facebook.ts";
 import { tradera } from "./platforms/tradera.ts";
@@ -33,7 +34,7 @@ if (cmd === "login" && arg) {
   const flow = flowFor(arg);
   const browser = await openBrowser(flow.platform);
   await (browser.pages()[0] ?? (await browser.newPage())).goto(flow.loginUrl);
-  console.log(`log in to ${flow.platform} in the browser window, then close it`);
+  log(`log in to ${flow.platform} in the browser window, then close it`);
   await browser.waitForEvent("close", { timeout: 0 });
 } else if (cmd === "discover" && arg) {
   await discover(flowFor(arg).platform);
@@ -51,7 +52,7 @@ if (cmd === "login" && arg) {
       for (const { slug, rec } of recs) {
         if (values.platform === "all" && !rec.platforms[flow.platform]) continue;
         if (values.reset) setListing(slug, flow.platform, undefined);
-        if (recs.length > 1) console.log(`— ${slug}`);
+        if (recs.length > 1) log(`— ${slug}`);
         code = Math.max(code, await runPost(flow, slug, { dryRun: values["dry-run"] }, browser));
       }
     } finally {
@@ -60,6 +61,6 @@ if (cmd === "login" && arg) {
   }
   process.exit(code);
 } else {
-  console.log("usage:\n  pnpm run login <platform>\n  pnpm discover <platform>\n  pnpm post <slug>... --platform <p|all> [--dry-run] [--reset]");
+  log("usage:\n  pnpm run login <platform>\n  pnpm discover <platform>\n  pnpm post <slug>... --platform <p|all> [--dry-run] [--reset]");
   process.exit(2);
 }

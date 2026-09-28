@@ -1,4 +1,5 @@
 import type { Page } from "patchright";
+import { log } from "../log.ts";
 import type { Ctx, Flow } from "./types.ts";
 
 // Recorded 2026-09-11. Form is a web-component app (shadow DOM): role/label locators only.
@@ -51,7 +52,7 @@ async function pickOption(page: Page, label: string, value: string | undefined) 
   if (!(await sel.isVisible({ timeout: 2_000 }).catch(() => false))) return;
   const options = (await sel.getByRole("option").allTextContents()).map((o) => o.trim()).filter(Boolean);
   if (value && options.includes(value)) return sel.selectOption({ label: value });
-  console.log(`blocket: ${label} left blank${value ? ` ("${value}" not offered)` : ""} — options: ${options.join(" | ")}`);
+  log(`blocket: ${label} left blank${value ? ` ("${value}" not offered)` : ""} — options: ${options.join(" | ")}`);
 }
 
 // Same fields, but type-and-pick rather than a select. Free text is not accepted.
@@ -64,7 +65,7 @@ async function pickSuggestion(page: Page, label: string, value: string | undefin
   // and clicking one of those hangs. An exact hit or nothing.
   const exact = page.getByRole("option", { name: value, exact: true });
   if (await exact.count()) return exact.first().click();
-  console.log(`blocket: ${label} "${value}" matched no suggestion, left blank`);
+  log(`blocket: ${label} "${value}" matched no suggestion, left blank`);
 }
 
 // The same field is a select in some categories and an autocomplete in others (Material: autocomplete
@@ -126,7 +127,7 @@ export const blocket: Flow = {
       run: async (page, ctx) => {
         // Clothing categories have no "Skick" select; they ask for Produktkategori/Färg/Storlek/Varumärke instead.
         const sel = field(page, SEL.condition, "combobox");
-        if (!(await sel.isVisible({ timeout: 5_000 }).catch(() => false))) return console.log("blocket: no Skick field in this category, skipping");
+        if (!(await sel.isVisible({ timeout: 5_000 }).catch(() => false))) return log("blocket: no Skick field in this category, skipping");
         await sel.selectOption({ label: CONDITION[ctx.record.item.condition] });
       },
     },

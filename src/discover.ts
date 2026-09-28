@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "patchright";
 import { openBrowser } from "./browser.ts";
+import { log } from "./log.ts";
 import { ROOT, type PlatformName } from "./record.ts";
 import { blocket } from "./platforms/blocket.ts";
 import { tradera } from "./platforms/tradera.ts";
@@ -149,7 +150,7 @@ async function discoverTradera(page: Page, snap: Snapshot) {
     ]);
     if (restr.allowUsed === false) defs.push([addField(snap, "new_only", { label: "Only new items allowed", type: "Restriction" }), true]);
     setCategory(snap, leaf.path, defs);
-    if (i % 100 === 0) console.log(`tradera ${i}/${leaves.length}`);
+    if (i % 100 === 0) log(`tradera ${i}/${leaves.length}`);
   }
 }
 
@@ -200,7 +201,7 @@ async function discoverVinted(page: Page, snap: Snapshot) {
       ];
     });
     setCategory(snap, leaf.path, defs);
-    if (i % 100 === 0) console.log(`vinted ${i}/${leaves.length}`);
+    if (i % 100 === 0) log(`vinted ${i}/${leaves.length}`);
   }
 }
 
@@ -214,7 +215,7 @@ async function discoverFacebook(page: Page, snap: Snapshot) {
   // Vehicles opens a different form; the rest carry an optional "Shipping available" badge in their text.
   const names = (await menu.getByRole("button").allTextContents()).map((s) => s.replace(/Shipping available$/, "").trim()).filter((s) => s && s !== "Vehicles");
   await page.keyboard.press("Escape");
-  console.log(`facebook: ${names.join(" | ")}`);
+  log(`facebook: ${names.join(" | ")}`);
   for (const name of names) {
     const defs = page
       .waitForResponse(async (r) => r.url().includes("/api/graphql") && (await r.text().catch(() => "")).includes('"definitions"'), { timeout: 15_000 })
@@ -224,7 +225,7 @@ async function discoverFacebook(page: Page, snap: Snapshot) {
     await menu.getByRole("button", { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) }).click();
     const list: any[] | undefined = (await defs)?.data?.viewer?.definitions;
     if (!list) {
-      console.log(`facebook: no field definitions after picking "${name}"`);
+      log(`facebook: no field definitions after picking "${name}"`);
       continue;
     }
     setCategory(
@@ -257,5 +258,5 @@ export async function discover(p: PlatformName) {
   }
   const dir = join(ROOT, "src", "platforms");
   writeFileSync(join(dir, `${p}.fields.json`), JSON.stringify(snap, null, 1) + "\n");
-  console.log(`${p}: ${Object.keys(snap.categories).length} categories, ${Object.keys(snap.fields).length} distinct fields → src/platforms/${p}.fields.json`);
+  log(`${p}: ${Object.keys(snap.categories).length} categories, ${Object.keys(snap.fields).length} distinct fields → src/platforms/${p}.fields.json`);
 }

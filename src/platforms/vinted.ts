@@ -1,4 +1,5 @@
 import type { Page } from "patchright";
+import { log } from "../log.ts";
 import { FormRejected, type Flow } from "./types.ts";
 
 // Recorded 2026-09-12 (English UI). Shipping-only marketplace: buyer pays postage, no pickup option.
@@ -105,7 +106,7 @@ export const vinted: Flow = {
         // A sole match can auto-select and close the list, leaving neither radio on screen.
         if (await exact.count()) await exact.click();
         else if (await custom.count()) await custom.click();
-        else console.log(`vinted: brand list gone after typing "${brand}" — assuming it auto-selected`);
+        else log(`vinted: brand list gone after typing "${brand}" — assuming it auto-selected`);
         const close = page.getByRole("dialog").getByRole("button", { name: SEL.authenticityClose }).first();
         if (await close.isVisible({ timeout: 1_500 }).catch(() => false)) await close.click();
       },

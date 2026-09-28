@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BrowserContext, Page } from "patchright";
 import { config } from "./config.ts";
+import { log } from "./log.ts";
 import { preparePhotos } from "./photos.ts";
 import { adText, itemDir, loadRecord, setListing } from "./record.ts";
 import { FormRejected, type Ctx, type Flow, type Step } from "./platforms/types.ts";
@@ -13,15 +14,15 @@ export async function runPost(flow: Flow, slug: string, opts: { dryRun: boolean 
   const rec = loadRecord(slug);
   const existing = rec.listings[p];
   if (existing?.status === "posted") {
-    console.log(`${p} posted ${existing.url}`);
+    log(`${p} posted ${existing.url}`);
     return 0;
   }
   if (existing?.status === "submitted" && !opts.dryRun) {
-    console.log(`${p} has status "submitted" without a url — check the site manually, then \`pnpm post ${slug} --platform ${p} --reset\``);
+    log(`${p} has status "submitted" without a url — check the site manually, then \`pnpm post ${slug} --platform ${p} --reset\``);
     return 1;
   }
   if (!rec.platforms[p]) {
-    console.log(`${p}: no platforms.${p} block in item.yaml`);
+    log(`${p}: no platforms.${p} block in item.yaml`);
     return 1;
   }
 
@@ -44,7 +45,7 @@ export async function runPost(flow: Flow, slug: string, opts: { dryRun: boolean 
     const status = submitted && !(e instanceof FormRejected) ? "submitted" : "failed";
     setListing(slug, p, { status, failed_step: step.name, flow_version: flow.version });
     const why = e instanceof FormRejected ? `: ${e.message}` : "";
-    console.log(`${p} FAILED at step "${step.name}"${why} — see ${dir}/`);
+    log(`${p} FAILED at step "${step.name}"${why} — see ${dir}/`);
     return 1;
   };
   try {
@@ -55,7 +56,7 @@ export async function runPost(flow: Flow, slug: string, opts: { dryRun: boolean 
         if (opts.dryRun) {
           const dir = runDir(slug, p);
           await page.screenshot({ path: join(dir, "dry-run.png"), fullPage: true });
-          console.log(`${p} dry-run ok — see ${dir}/dry-run.png`);
+          log(`${p} dry-run ok — see ${dir}/dry-run.png`);
           return 0;
         }
         setListing(slug, p, { status: "submitted", flow_version: flow.version });
@@ -75,7 +76,7 @@ export async function runPost(flow: Flow, slug: string, opts: { dryRun: boolean 
       posted_at: new Date().toISOString(),
       flow_version: flow.version,
     });
-    console.log(`${p} posted ${ctx.result.url}`);
+    log(`${p} posted ${ctx.result.url}`);
     return 0;
   } finally {
     await page.close();

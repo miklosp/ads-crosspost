@@ -1,3 +1,4 @@
+import { log } from "../log.ts";
 import type { Flow } from "./types.ts";
 
 // Recorded 2026-09-11 (English UI). React form; role/name locators.
@@ -91,7 +92,7 @@ export const facebook: Flow = {
         const tags = ctx.record.platforms.facebook!.tags;
         if (!tags?.length) return;
         const box = page.getByRole("textbox", { name: SEL.tags });
-        if (!(await box.isVisible({ timeout: 2_000 }).catch(() => false))) return console.log("facebook: no Product tags field, skipping");
+        if (!(await box.isVisible({ timeout: 2_000 }).catch(() => false))) return log("facebook: no Product tags field, skipping");
         for (const tag of tags) {
           await box.fill(tag);
           await page.keyboard.press("Enter");

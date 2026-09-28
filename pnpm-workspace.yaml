@@ -2,3 +2,6 @@ allowBuilds:
   electron-winstaller: false
   esbuild: true
   sharp: false
+supportedArchitectures:
+  os: [current]
+  cpu: [arm64, x64]

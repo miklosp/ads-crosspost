@@ -11,7 +11,8 @@ import { attentionCount, notificationFor, PLATFORMS, type AppState } from "./att
 
 // Tray-resident shell. The engine (job queue, MCP server) runs in a utilityProcess; see docs/DESKTOP-APP.md.
 // Hosts' stdio shim (src/shim.ts) runs as plain node, not through this file.
-if (!app.requestSingleInstanceLock()) app.exit(0);
+// Old connectors launched "<app> --stdio"; exit quietly so they don't start or focus the app. Reconnect replaces them.
+if (process.argv.includes("--stdio") || !app.requestSingleInstanceLock()) app.exit(0);
 
 let tray: Tray;
 let engine: UtilityProcess | undefined;

@@ -1,4 +1,5 @@
 import type { Page } from "patchright";
+import { configPath } from "../config.ts";
 import { log } from "../log.ts";
 import type { Ctx, Flow } from "./types.ts";
 
@@ -137,6 +138,7 @@ export const blocket: Flow = {
     {
       name: "location",
       run: async (page, ctx) => {
+        if (!ctx.config.postcode) throw new Error(`blocket needs postcode in ${configPath()}`);
         const pn = page.getByLabel(SEL.postcode);
         await pn.fill(ctx.config.postcode);
         await pn.press("Tab"); // validation runs on blur

@@ -6,7 +6,8 @@
     "post": "node src/cli.ts post",
     "login": "node src/cli.ts login",
     "discover": "node src/cli.ts discover",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test"
   },
   "dependencies": {
     "patchright": "^1.55.0",

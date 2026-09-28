@@ -2,13 +2,13 @@ import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { chromium, type BrowserContext } from "patchright";
 import { config } from "./config.ts";
-import { ROOT, type PlatformName } from "./record.ts";
+import { DATA, type PlatformName } from "./record.ts";
 
 // One persistent profile per platform; bundled Chromium, headed. See docs/BROWSER-AUTOMATION.md §2.
 // config.window_display parks the window on a display you don't look at; see docs/BACKGROUND-APP.md.
 export function openBrowser(p: PlatformName): Promise<BrowserContext> {
   const pos = config.window_display && displayOrigin(config.window_display);
-  return chromium.launchPersistentContext(join(ROOT, "sessions", p), {
+  return chromium.launchPersistentContext(join(DATA, "sessions", p), {
     headless: false,
     viewport: null,
     args: pos ? [`--window-position=${pos}`] : [],

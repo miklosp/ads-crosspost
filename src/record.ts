@@ -1,10 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { parseDocument } from "yaml";
 import { z } from "zod";
 
-export const ROOT = new URL("..", import.meta.url).pathname;
-export const itemDir = (slug: string) => join(ROOT, "items", slug);
+export const ROOT = new URL("..", import.meta.url).pathname; // code and static assets
+// items/, sessions/, .cache/, config.yaml; the desktop app sets ADS_DATA_DIR, the CLI defaults to the repo
+export const dataDir = (env = process.env) => (env.ADS_DATA_DIR ? resolve(env.ADS_DATA_DIR) : ROOT);
+export const DATA = dataDir();
+export const itemDir = (slug: string) => join(DATA, "items", slug);
 
 const Lang = z.enum(["sv", "en", "both"]);
 const Condition = z.enum(["new_with_tags", "new", "like_new", "good", "fair", "poor"]);

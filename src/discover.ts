@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Page } from "patchright";
 import { openBrowser } from "./browser.ts";
 import { log } from "./log.ts";
-import { ROOT, type PlatformName } from "./record.ts";
+import { DATA, ROOT, type PlatformName } from "./record.ts";
 import { blocket } from "./platforms/blocket.ts";
 import { tradera } from "./platforms/tradera.ts";
 
@@ -36,7 +36,7 @@ function setCategory(snap: Snapshot, path: string, fields: [key: string, require
   };
 }
 
-const cacheDir = (p: string) => join(ROOT, ".cache", "discover", p);
+const cacheDir = (p: string) => join(DATA, ".cache", "discover", p);
 async function cached<T>(p: string, id: string | number, get: () => Promise<T>): Promise<T> {
   const file = join(cacheDir(p), `${id}.json`);
   if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8"));

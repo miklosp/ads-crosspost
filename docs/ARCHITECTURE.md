@@ -41,7 +41,7 @@ ads-crosspost/
     record.ts                 # load/validate/write item.yaml (only writer)
     photos.ts                 # resize into items/<slug>/out/<platform>/
     browser.ts                # patchright persistent context on sessions/<platform>
-    flow.ts                   # runPost(): named steps, artifacts on failure, idempotency guard
+    flow.ts                   # prepare()/publish(): named steps, artifacts on failure, idempotency guard
     discover.ts               # snapshot every category's form fields → platforms/<p>.fields.json
     platforms/
       types.ts                # Ctx / Step / Flow types

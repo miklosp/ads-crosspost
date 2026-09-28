@@ -1,14 +1,14 @@
 import { parseArgs } from "node:util";
-import type { BrowserContext } from "patchright";
+import type { BrowserContext, Page } from "patchright";
 import { openBrowser } from "./browser.ts";
 import { discover } from "./discover.ts";
-import { runPost } from "./flow.ts";
+import { prepare, publish, type Failed } from "./flow.ts";
 import { log } from "./log.ts";
 import { blocket } from "./platforms/blocket.ts";
 import { facebook } from "./platforms/facebook.ts";
 import { tradera } from "./platforms/tradera.ts";
 import { vinted } from "./platforms/vinted.ts";
-import type { Flow } from "./platforms/types.ts";
+import { FormRejected, type Flow } from "./platforms/types.ts";
 import { loadRecord, PLATFORMS, setListing, type PlatformName } from "./record.ts";
 
 const FLOWS: Partial<Record<PlatformName, Flow>> = { blocket, facebook, tradera, vinted };
@@ -28,6 +28,42 @@ function flowFor(name: string): Flow {
   const f = FLOWS[name as PlatformName];
   if (!f) throw new Error(`no flow for "${name}" (have: ${Object.keys(FLOWS).join(", ")})`);
   return f;
+}
+
+// exit code semantics: 0 = posted or already posted, 1 = failed
+// browser() opens the platform's browser on first use; the caller closes it after its last item
+async function runPost(flow: Flow, slug: string, dryRun: boolean, browser: () => Promise<BrowserContext>): Promise<number> {
+  const p = flow.platform;
+  const failed = (r: Failed) => {
+    const why = r.error instanceof FormRejected ? `: ${r.error.message}` : "";
+    log(`${p} FAILED at step "${r.step}"${why} — see ${r.dir}/`);
+    return 1;
+  };
+  // fresh tab per item: a failed run leaves a half-filled form, and close() skips its beforeunload prompt
+  let page: Page | undefined;
+  try {
+    const r = await prepare(flow, slug, async () => (page = await (await browser()).newPage()), { dryRun });
+    if (r.kind === "already_posted") {
+      log(`${p} posted ${r.url}`);
+      return 0;
+    }
+    if (r.kind === "blocked") {
+      if (r.reason === "submitted") log(`${p} has status "submitted" without a url — check the site manually, then \`pnpm post ${slug} --platform ${p} --reset\``);
+      else log(`${p}: no platforms.${p} block in item.yaml`);
+      return 1;
+    }
+    if (r.kind === "failed") return failed(r);
+    if (dryRun) {
+      log(`${p} dry-run ok — see ${r.screenshot}`);
+      return 0;
+    }
+    const posted = await publish(r.handle);
+    if (posted.kind === "failed") return failed(posted);
+    log(`${p} posted ${posted.url}`);
+    return 0;
+  } finally {
+    await page?.close();
+  }
 }
 
 if (cmd === "login" && arg) {
@@ -53,7 +89,7 @@ if (cmd === "login" && arg) {
         if (values.platform === "all" && !rec.platforms[flow.platform]) continue;
         if (values.reset) setListing(slug, flow.platform, undefined);
         if (recs.length > 1) log(`— ${slug}`);
-        code = Math.max(code, await runPost(flow, slug, { dryRun: values["dry-run"] }, browser));
+        code = Math.max(code, await runPost(flow, slug, values["dry-run"], browser));
       }
     } finally {
       if (ctx) await (await ctx).close();

@@ -6,3 +6,5 @@ items/*/runs/
 .cache/
 items/
 .claude/scheduled_tasks.lock
+dist/
+app/dist/

@@ -1,12 +1,16 @@
 {
   "name": "ads-crosspost",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "post": "node src/cli.ts post",
     "login": "node src/cli.ts login",
     "discover": "node src/cli.ts discover",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "app:build-js": "esbuild app/main.ts app/engine.ts --bundle --platform=node --format=cjs --out-extension:.js=.cjs --outdir=app/dist --external:electron --external:patchright --external:patchright-core --external:sharp",
+    "app:dev": "pnpm app:build-js && electron .",
+    "app:dist": "pnpm app:build-js && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64"
   },
   "dependencies": {
     "patchright": "^1.55.0",
@@ -16,6 +20,51 @@
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
     "typescript": "^5.9.2"
+  },
+  "main": "app/dist/main.cjs",
+  "build": {
+    "appId": "io.github.adscrosspost.app",
+    "productName": "Ads Crosspost",
+    "files": [
+      "app/dist/**",
+      "app/assets/**",
+      "app/index.html",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/patchright/**",
+      "node_modules/patchright-core/**",
+      "node_modules/sharp/**",
+      "node_modules/@img/**"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }

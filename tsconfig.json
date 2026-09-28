@@ -7,12 +7,14 @@
     "noEmit": true,
     "skipLibCheck": true,
     "types": [
-      "node"
+      "node",
+      "electron"
     ],
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true
   },
   "include": [
-    "src"
+    "src",
+    "app"
   ]
 }

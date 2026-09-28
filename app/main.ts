@@ -1,8 +1,18 @@
-import { join } from "node:path";
+import { spawn } from "node:child_process";
+import { join, resolve } from "node:path";
 import { app, BrowserWindow, Menu, Tray, utilityProcess, type UtilityProcess } from "electron";
+import { runShim } from "../src/shim.ts";
 
 // Tray-resident shell. The engine (job queue, MCP server) runs in a utilityProcess; see docs/DESKTOP-APP.md.
-if (!app.requestSingleInstanceLock()) app.exit(0);
+// --stdio: MCP stdio shim for hosts (no lock, tray or windows); launches the tray app if the daemon is down.
+const STDIO = process.argv.includes("--stdio");
+if (STDIO) runShim({
+  dataDir: app.getPath("userData"),
+  launchApp: () => (process.platform === "darwin" && app.isPackaged
+    ? spawn("open", ["-n", "-g", "-a", resolve(process.execPath, "../../..")], { detached: true, stdio: "ignore" })
+    : spawn(process.execPath, app.isPackaged ? [] : [app.getAppPath()], { detached: true, stdio: "ignore" })).unref(),
+}).then(() => app.exit(0));
+else if (!app.requestSingleInstanceLock()) app.exit(0);
 
 let tray: Tray;
 let engine: UtilityProcess | undefined;
@@ -65,6 +75,7 @@ app.on("window-all-closed", () => {}); // stay in the tray
 app.on("before-quit", () => { quitting = true; engine?.kill(); });
 
 app.whenReady().then(() => {
+  if (STDIO) return;
   app.dock?.hide();
   tray = new Tray(join(__dirname, "../assets/trayTemplate.png"));
   setStatus(status);

@@ -1,0 +1,2 @@
+postcode: "12345"          # seller postcode; Blocket wants this instead of free-text location
+# window_display: Ads      # optional: open browser windows on this display (SimpleDisplay virtual display)

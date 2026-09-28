@@ -9,7 +9,7 @@
     "discover": "node src/cli.ts discover",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
-    "app:build-js": "esbuild app/main.ts app/engine.ts --bundle --platform=node --format=cjs --out-extension:.js=.cjs --outdir=app/dist --external:electron --external:patchright --external:patchright-core --external:sharp",
+    "app:build-js": "esbuild app/main.ts --bundle --platform=node --format=cjs --outfile=app/dist/main.cjs --external:electron && esbuild app/engine.ts --bundle --platform=node --format=esm --outfile=app/dist/engine.mjs --external:patchright --external:patchright-core --external:sharp \"--banner:js=import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\"",
     "app:dev": "pnpm app:build-js && electron .",
     "app:dist": "pnpm app:build-js && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64"
   },
@@ -35,6 +35,8 @@
       "app/dist/**",
       "app/assets/**",
       "app/index.html",
+      "src/platforms/*.json",
+      "src/prompts/*.md",
       "package.json"
     ],
     "asarUnpack": [

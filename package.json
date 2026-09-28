@@ -1,0 +1,21 @@
+{
+  "name": "ads-crosspost",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "post": "node src/cli.ts post",
+    "login": "node src/cli.ts login",
+    "discover": "node src/cli.ts discover",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "patchright": "^1.55.0",
+    "sharp": "^0.34.3",
+    "yaml": "^2.8.1",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "^5.9.2"
+  }
+}

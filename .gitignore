@@ -1,0 +1,8 @@
+items/*/photos/
+sessions/
+node_modules/
+items/*/out/
+items/*/runs/
+.cache/
+items/
+.claude/scheduled_tasks.lock

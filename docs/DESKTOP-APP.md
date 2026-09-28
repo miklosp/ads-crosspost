@@ -1,0 +1,64 @@
+# Desktop app: packaging and host connectivity
+
+Researched 2026-09-28. Builds on [BACKGROUND-APP.md](BACKGROUND-APP.md) and [MCP-BIDI-RESEARCH.md](MCP-BIDI-RESEARCH.md).
+"(unverified)" = no primary source or not tested.
+
+## Decision summary
+
+- **Build our own tray app; don't base it on Donut Browser or BrowserOS.**
+  - Donut (Tauri, AGPL): its automation API, MCP tools and CDP `/run` all return HTTP 402 without a paid
+    Donut cloud plan (`api_server.rs`, `cloud_auth.rs`). It ships only Wayfern, a Chromium build with
+    no public source (unverified) and spoofed fingerprints. Borrow its patterns only: tray and
+    single-instance setup, bundle targets, checksum-verified browser download.
+  - BrowserOS (Chromium fork, AGPL): always exposes loopback CDP (9110 neo / 9100 classic) with
+    `navigator.webdriver` patched false. That makes it a possible **fallback engine** via
+    `connectOverCDP`, not a base. It means one shared profile and logging in again.
+  - Nothing else fits (playwright-mcp, browser-use, steel, kernel are LLM-driven or server/cloud).
+- **Stack: Electron + electron-builder.** TS only; Tray/Notification/login items/auto-update built in.
+  - patchright runs in a `utilityProcess`.
+  - `src/` is bundled with esbuild.
+  - `patchright-core` and `sharp`/`@img` go in `asarUnpack`.
+  - Tauri + Node sidecar saves ~50 MB but adds Rust. Size is dominated by the ~350 MB browser anyway.
+- **Browser: not bundled.** Either keep patchright Chromium, downloaded on first run into app data via
+  `PLAYWRIGHT_BROWSERS_PATH`, or use installed Google Chrome (`channel: "chrome"`, patchright's current
+  recommendation). Switching from Chromium to Chrome changes the device the sites see, so it means
+  logging in again.
+- **Android: not feasible.** An APK can't drive a headed Chromium with its own profile. At most a remote UI.
+- **Transport:** one daemon (the tray app) serving Streamable HTTP on `127.0.0.1:<port>/mcp`.
+  - Security: a bearer token stored in a 0600 file, plus `Origin`/`Host` checks.
+  - A `--stdio` shim mode proxies stdio to the daemon and starts the daemon if it's down.
+- **Long jobs:** tools return a `job_id` in under 5 s. `wait_for_status(job_id, max_s ≤ 45)` long-polls
+  under Claude Desktop's ~60 s cap.
+- **Needs attention:** OS notifications from the tray app. No host shows a server push in an idle chat,
+  and Claude Desktop has no elicitation. The publish gate is server-side (`ready_to_publish` state).
+
+## Hosts
+
+| Host | Route | Notes |
+|---|---|---|
+| Claude Desktop (mac/win) | `.mcpb` stdio shim → daemon | No localhost HTTP; custom connectors need public HTTPS. ~60 s timeout. Images OK. No elicitation. |
+| ChatGPT desktop (unified app) | `~/.codex/config.toml` entry (stdio or HTTP) | Tools reportedly hidden in Chat mode, work in Work/Codex mode ([codex#38162](https://github.com/openai/codex/issues/38162)). ChatGPT web needs public HTTPS, so skip it. |
+| Gemini app / Spark | none | No local MCP. Gemini CLI (API-key users) and Antigravity have local MCP config. |
+| Claude Code | `claude mcp add --transport http` | |
+| Cursor / VS Code / LM Studio | deep links (`cursor://…/mcp/install`, `vscode:mcp/install`, `lmstudio://add_mcp`) | Cheap extras. |
+
+Never expose the server through a public tunnel. It holds logged-in marketplace sessions, and page
+content could inject prompts into a tool that can write.
+
+## Hiding windows / focus
+
+- **macOS:** virtual display (SimpleDisplay), as today. Launching Chromium activates it; there's no
+  flag to prevent that ([playwright#41306](https://github.com/microsoft/playwright/issues/41306)).
+  Keeping one browser per site open for the app's lifetime limits focus theft to startup.
+  - Possible fix: `open -g --no-startup-window` + `connectOverCDP` + background `Target.createTarget`
+    (godmode-bot PR #6). Whether patchright stealth survives that is unverified.
+- **Windows:** negative `--window-position` may work (unverified). Playwright's defaults already
+  disable occlusion throttling.
+- **Linux:** Xvfb/Xephyr per browser on X11.
+
+## Signing
+
+- macOS: Developer ID + notarization, $99/yr. Without it the user allows the app in System Settings
+  and electron-updater can't auto-update.
+- Windows: Azure Artifact Signing is for individuals in the US/Canada only. From Sweden that means an
+  org or an OV certificate. Unsigned builds get SmartScreen warnings.

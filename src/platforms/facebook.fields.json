@@ -1,0 +1,1119 @@
+{
+ "platform": "facebook",
+ "snapshot": "2026-09-26",
+ "fields": {
+  "Condition": {
+   "label": "Condition",
+   "type": "LIST",
+   "options": [
+    "New",
+    "Used - Like New",
+    "Used - Good",
+    "Used - Fair"
+   ]
+  },
+  "Brand": {
+   "label": "Brand",
+   "type": "INPUT"
+  },
+  "Bed Size": {
+   "label": "Bed Size",
+   "type": "LIST",
+   "options": [
+    "Twin",
+    "Twin XL",
+    "Full",
+    "Queen",
+    "King",
+    "California King"
+   ]
+  },
+  "Bed Type": {
+   "label": "Bed Type",
+   "type": "LIST",
+   "options": [
+    "Adjustable Bed",
+    "Bookcase Bed",
+    "Bunk Bed",
+    "Canopy Bed",
+    "Captain's Bed",
+    "Daybed",
+    "Folding Bed",
+    "Four Poster Bed",
+    "Murphy Bed",
+    "Panel Bed",
+    "Platform Bed",
+    "Slat Bed",
+    "Sleigh Bed",
+    "Standard Bed",
+    "Storage Bed",
+    "Toddler Bed",
+    "Trundle Bed",
+    "Waterbed"
+   ]
+  },
+  "Color": {
+   "label": "Color",
+   "type": "INPUT"
+  },
+  "Material": {
+   "label": "Material",
+   "type": "LIST",
+   "options": [
+    "Acrylic",
+    "Alder",
+    "Aluminum",
+    "Angora",
+    "Ash",
+    "Bakelite",
+    "Bamboo",
+    "Beech",
+    "Birch",
+    "Bouclé",
+    "Brass",
+    "Brocade",
+    "Bronze",
+    "Cane",
+    "Canvas",
+    "Cashmere",
+    "Cashmere Blend",
+    "Cast Iron",
+    "Cedar",
+    "Ceramic",
+    "Chambray",
+    "Chenille",
+    "Cherry",
+    "Chestnut",
+    "Chiffon",
+    "Chipboard",
+    "Chrome",
+    "Copper",
+    "Corduroy",
+    "Cork",
+    "Cotton",
+    "Cotton Blend",
+    "Crystal",
+    "Denim",
+    "Down",
+    "EVA",
+    "Ebony",
+    "Elm",
+    "Enamel",
+    "Fabric",
+    "Faux Fur",
+    "Faux Leather",
+    "Faux Marble",
+    "Faux Silk",
+    "Faux Suede",
+    "Feather",
+    "Fiberglass",
+    "Foam",
+    "Formica",
+    "Fur",
+    "Gel",
+    "Glass",
+    "Gold",
+    "Gore-Tex",
+    "Hemp",
+    "Horn",
+    "Iron",
+    "Jersey",
+    "Jute",
+    "Lace",
+    "Lambswool",
+    "Lamé",
+    "Latex",
+    "Leather",
+    "Linen",
+    "Lucite",
+    "Mahogany",
+    "Maple",
+    "Marble",
+    "Melamine",
+    "Memory Foam",
+    "Merino Wool",
+    "Mesh",
+    "Metal",
+    "Microfiber",
+    "Microfleece",
+    "Mohair",
+    "Mother of Pearl",
+    "Natural Hair",
+    "Neoprene",
+    "Nickel",
+    "Nylon",
+    "Nylon Bristles",
+    "Oak",
+    "Oilcloth",
+    "Organza",
+    "Ormolu",
+    "Ostrich",
+    "PVC",
+    "Paper",
+    "Particle Board",
+    "Patent Leather",
+    "Pewter",
+    "Pine",
+    "Plastic",
+    "Plywood",
+    "Polyester",
+    "Polyisoprene",
+    "Polypropylene",
+    "Polyurethane",
+    "Porcelain",
+    "Rattan",
+    "Rayon",
+    "Reclaimed Wood",
+    "Resin",
+    "Rosewood",
+    "Rubber",
+    "Rubberwood",
+    "Rush",
+    "Sable Hair",
+    "Satin",
+    "Seagrass",
+    "Sequin",
+    "Shearling",
+    "Sheepskin",
+    "Shell Cordovan Leather",
+    "Silicone",
+    "Silk",
+    "Silk Blend",
+    "Silver",
+    "Slate",
+    "SmartWool",
+    "Snakeskin",
+    "Spandex",
+    "Stained Glass",
+    "Stainless Steel",
+    "Steel",
+    "Stone",
+    "Straw",
+    "Suede",
+    "Synthetic",
+    "Synthetic Fiber",
+    "Synthetic Hair",
+    "Taffeta",
+    "Teak",
+    "Terry",
+    "Tin",
+    "Titanium",
+    "Travertine",
+    "Tweed",
+    "Twill",
+    "Velour",
+    "Velvet",
+    "Velveteen",
+    "Vinyl",
+    "Walnut",
+    "Wax",
+    "Wicker",
+    "Wire",
+    "Wood",
+    "Wood Veneer",
+    "Wool Blend",
+    "Wrought Iron",
+    "Yew"
+   ]
+  },
+  "Outdoor Table Type": {
+   "label": "Outdoor Table Type",
+   "type": "LIST",
+   "options": [
+    "Accent Table",
+    "Balcony Table",
+    "Bistro Table",
+    "Buffet Table",
+    "Camping Table",
+    "Coffee Table",
+    "Console Table",
+    "Dining Table",
+    "End Table",
+    "Picnic Table",
+    "Pub Table"
+   ]
+  },
+  "Shape": {
+   "label": "Shape",
+   "type": "LIST",
+   "options": [
+    "U-Shaped",
+    "Square",
+    "Round",
+    "Half Circle",
+    "L-Shaped",
+    "Triangle",
+    "Octagon",
+    "Cube",
+    "Hexagon",
+    "Rectangular",
+    "Oval",
+    "Irregular",
+    "Boat",
+    "D-End"
+   ]
+  },
+  "Juicer Type": {
+   "label": "Juicer Type",
+   "type": "LIST",
+   "options": [
+    "Citrus Juicer",
+    "Manual Juicer",
+    "Masticating Juicer",
+    "Cold Press Juicer",
+    "Electric Juicer",
+    "Centrifugal Juicer",
+    "Steam Juicer"
+   ]
+  },
+  "Platform": {
+   "label": "Platform",
+   "type": "LIST",
+   "options": [
+    "3DO",
+    "Atari 2600",
+    "Atari Jaguar",
+    "Hyperkin RetroN",
+    "Hyperkin SupaBoy",
+    "Mac",
+    "NEC PC-FX",
+    "Nintendo 2DS",
+    "Nintendo 3DS",
+    "Nintendo 64",
+    "Nintendo DS",
+    "Nintendo DSi",
+    "Nintendo Game Boy",
+    "Nintendo Game Boy Advance",
+    "Nintendo Game Boy Color",
+    "Nintendo GameCube",
+    "Nintendo NES",
+    "Nintendo SNES",
+    "Nintendo Switch",
+    "Nintendo Wii",
+    "Nintendo Wii U",
+    "Oculus Go",
+    "Oculus Quest",
+    "Oculus Rift",
+    "PC",
+    "PlayStation 1",
+    "PlayStation 2",
+    "PlayStation 3",
+    "PlayStation 4",
+    "PlayStation 5",
+    "PlayStation Portable",
+    "PlayStation Vita",
+    "Sega Dreamcast",
+    "Sega Genesis",
+    "Sega Master System",
+    "Sega Saturn",
+    "Super Nintendo",
+    "Xbox",
+    "Xbox 360",
+    "Xbox One",
+    "Xbox Series X"
+   ]
+  },
+  "Video Game Genre": {
+   "label": "Video Game Genre",
+   "type": "LIST",
+   "options": [
+    "Action RPG",
+    "Adventure",
+    "Battle Arena",
+    "Casual",
+    "Educational",
+    "First Person Shooter",
+    "Horror",
+    "MMO",
+    "Platformer",
+    "RPG",
+    "Real Time Strategy",
+    "Roguelike",
+    "Simulation",
+    "Sports",
+    "Stealth",
+    "Survival",
+    "Tower Defense",
+    "Trivia",
+    "Action",
+    "Action Adventure",
+    "Artillery",
+    "Beat 'Em Up",
+    "Board Game",
+    "Card Game",
+    "Competitive",
+    "Construction & Management Simulation",
+    "Exergame",
+    "Fighting",
+    "First Person Party Based RPG",
+    "Flight Simulation",
+    "Graphic Adventure",
+    "Idle",
+    "Interactive Movie",
+    "Kart Racing",
+    "Life Simulation",
+    "Logic",
+    "MMORPG",
+    "Metroidvania",
+    "Multiplayer Online Battle Arena",
+    "Puzzle",
+    "Racing",
+    "Racing Simulation",
+    "Real Time 3D",
+    "Real Time Tactics",
+    "Retro",
+    "Rhythm",
+    "Role Playing",
+    "Sandbox RPG",
+    "Shoot 'Em Up",
+    "Shooter",
+    "Sports Based Fighting",
+    "Strategy",
+    "Survival Horror",
+    "Tactical RPG",
+    "Team Sports",
+    "Text Adventure",
+    "Third Person Shooter",
+    "Top Down Shooter",
+    "Turn Based Strategy",
+    "Turn Based Tactics",
+    "Visual Novel",
+    "Wargame"
+   ]
+  },
+  "ESRB Rating": {
+   "label": "ESRB Rating",
+   "type": "LIST",
+   "options": [
+    "Early Childhood",
+    "Everyone",
+    "Everyone 10+",
+    "Teen",
+    "Mature",
+    "Rating Pending",
+    "Adults Only"
+   ]
+  },
+  "Luggage Material": {
+   "label": "Luggage Material",
+   "type": "INPUT"
+  },
+  "Material#2": {
+   "label": "Material",
+   "type": "LIST",
+   "options": [
+    "ABS Plastic",
+    "Aluminum",
+    "Canvas",
+    "Fabric",
+    "Gore-Tex",
+    "Leather",
+    "Microfiber",
+    "Neoprene",
+    "Nylon",
+    "PVC",
+    "Plastic",
+    "Poly Blend",
+    "Polyester",
+    "Polypropylene",
+    "Polyurethane"
+   ]
+  },
+  "Size": {
+   "label": "Size",
+   "type": "INPUT"
+  },
+  "Material#3": {
+   "label": "Material",
+   "type": "LIST",
+   "options": [
+    "Calf Hair",
+    "Canvas",
+    "Cotton",
+    "Crocodile/Alligator",
+    "Faux Fur",
+    "Faux Leather",
+    "Faux Suede",
+    "Leather",
+    "Mesh",
+    "Metal",
+    "PVC",
+    "Plastic",
+    "Polyester",
+    "Rubber",
+    "Snakeskin",
+    "Spandex",
+    "Straw",
+    "Suede",
+    "Synthetic"
+   ]
+  },
+  "Coat Style": {
+   "label": "Coat Style",
+   "type": "LIST",
+   "options": [
+    "Blazer",
+    "Dinner Jacket",
+    "Sport Coat",
+    "Suit Jacket"
+   ]
+  },
+  "Fit": {
+   "label": "Fit",
+   "type": "LIST",
+   "options": [
+    "Classic",
+    "Modern",
+    "Skinny",
+    "Slim"
+   ]
+  },
+  "Bracelet Style": {
+   "label": "Bracelet Style",
+   "type": "INPUT"
+  },
+  "Gemstone": {
+   "label": "Gemstone",
+   "type": "LIST",
+   "options": [
+    "Alexandrite",
+    "Amber",
+    "Amethyst",
+    "Ametrine",
+    "Ammolite",
+    "Aquamarine",
+    "Citrine",
+    "Coral",
+    "Crystal",
+    "Cubic Zirconia",
+    "Diamond",
+    "Emerald",
+    "Fluorite",
+    "Garnet",
+    "Iolite",
+    "Jade",
+    "Lapis Lazuli",
+    "Moonstone",
+    "Morganite",
+    "Obsidian",
+    "Onyx",
+    "Opal",
+    "Pearl",
+    "Peridot",
+    "Quartz",
+    "Ruby",
+    "Sapphire",
+    "Spinel",
+    "Tanzanite",
+    "Topaz",
+    "Tourmaline",
+    "Turquoise",
+    "Zircon"
+   ]
+  },
+  "Material#4": {
+   "label": "Material",
+   "type": "LIST",
+   "options": [
+    "Aluminum",
+    "Brass",
+    "Bronze",
+    "Ceramic",
+    "Copper",
+    "Cork",
+    "Faux Leather",
+    "Glass",
+    "Gold",
+    "Hemp",
+    "Leather",
+    "Paper",
+    "Pewter",
+    "Plastic",
+    "Platinum",
+    "Rose Gold",
+    "Shell",
+    "Silver",
+    "Stainless Steel",
+    "Steel",
+    "Sterling Silver",
+    "Stone",
+    "Titanium",
+    "Tungsten",
+    "White Gold",
+    "Wood",
+    "Yellow Gold"
+   ]
+  },
+  "Brand#2": {
+   "label": "Brand",
+   "type": "TYPEAHEAD",
+   "options": [
+    "Armani Exchange",
+    "Avon",
+    "Beurer",
+    "Carven",
+    "DKNY",
+    "Dove",
+    "Exotic Dolls Cosmetics",
+    "Fisher & Paykel",
+    "Got2b",
+    "HoMedics",
+    "L'Oreal",
+    "Lanvin",
+    "Marc Tetro",
+    "Montblanc",
+    "Nautica",
+    "Nizoral",
+    "Original Penguin",
+    "Playtex",
+    "Revlon",
+    "Rogaine",
+    "TRESemme",
+    "The Honest Company",
+    "Tom Ford",
+    "Victoria's Secret",
+    "Vogue",
+    "Wahl",
+    "Zwilling Beauty",
+    "adidas",
+    "kate spade new york",
+    "kensie"
+   ]
+  },
+  "Hair Type": {
+   "label": "Hair Type",
+   "type": "LIST",
+   "options": [
+    "Color Treated Hair",
+    "Curly Hair",
+    "Damaged Hair",
+    "Dry Hair",
+    "Fine Hair",
+    "Normal Hair",
+    "Oily Hair",
+    "All Hair Types",
+    "Coarse Hair"
+   ]
+  },
+  "Gender": {
+   "label": "Gender",
+   "type": "INPUT"
+  },
+  "Pet Type": {
+   "label": "Pet Type",
+   "type": "INPUT"
+  },
+  "Pet Size": {
+   "label": "Pet Size",
+   "type": "INPUT"
+  },
+  "Dimensions": {
+   "label": "Dimensions",
+   "type": "INPUT"
+  },
+  "Brand#3": {
+   "label": "Brand",
+   "type": "TYPEAHEAD",
+   "options": [
+    "American Girl",
+    "Barbie",
+    "Creatable World",
+    "Darda",
+    "Dickie Toys",
+    "Disney",
+    "Enchantimals",
+    "Fisher-Price",
+    "Funko",
+    "Gener8",
+    "HABA",
+    "Haktoys",
+    "Hasbro",
+    "HearthSong",
+    "Hey! Play!",
+    "Hot Wheels",
+    "Jurassic World",
+    "Justice",
+    "Learning Resources",
+    "Little Tikes",
+    "Matchbox",
+    "Mattel",
+    "Mega Bloks",
+    "Monster High",
+    "PicassoTiles",
+    "Pooparoos",
+    "Target",
+    "Thomas & Friends",
+    "VTech",
+    "World Tech Toys",
+    "waytoplay"
+   ]
+  },
+  "Age Range": {
+   "label": "Age Range",
+   "type": "LIST",
+   "options": [
+    "0-12 months",
+    "12-24 months",
+    "2-4 years",
+    "5-7 years",
+    "8-11 years",
+    "12+ years"
+   ]
+  },
+  "Character": {
+   "label": "Character",
+   "type": "INPUT"
+  },
+  "Compatible Cell Phone": {
+   "label": "Compatible Cell Phone",
+   "type": "LIST",
+   "options": [
+    "Google Pixel 2",
+    "Google Pixel 2 XL",
+    "Google Pixel 3",
+    "Google Pixel 3 XL",
+    "Google Pixel 3a",
+    "Google Pixel 3a XL",
+    "Google Pixel 4",
+    "Google Pixel 4 XL",
+    "Samsung Galaxy S10",
+    "Samsung Galaxy S20",
+    "Samsung Galaxy S6",
+    "Samsung Galaxy S6 Edge",
+    "Samsung Galaxy S7",
+    "Samsung Galaxy S7 Edge",
+    "Samsung Galaxy S8",
+    "Samsung Galaxy S8+",
+    "Samsung Galaxy S9",
+    "iPhone 11",
+    "iPhone 5/5S/SE",
+    "iPhone 5C",
+    "iPhone 6/6S",
+    "iPhone 6/6S Plus",
+    "iPhone 7",
+    "iPhone 7 Plus",
+    "iPhone 8",
+    "iPhone 8 Plus",
+    "iPhone X",
+    "iPhone XR",
+    "iPhone XS"
+   ]
+  },
+  "Watch Band Material": {
+   "label": "Watch Band Material",
+   "type": "INPUT"
+  },
+  "Watch Band Size": {
+   "label": "Watch Band Size",
+   "type": "INPUT"
+  },
+  "Bicycle Type": {
+   "label": "Bicycle Type",
+   "type": "LIST",
+   "options": [
+    "BMX Bike",
+    "City Bike",
+    "Commuter Bike",
+    "Cruiser Bike",
+    "Cyclo-cross Bike",
+    "Dirt Jumper Bike",
+    "Downhill Bike",
+    "Electric Bike",
+    "Fat Bike",
+    "Folding Bike",
+    "Gravel Bike",
+    "Hybrid Bike",
+    "Lowrider Bike",
+    "Mountain Bike",
+    "Recumbent Bike",
+    "Road Bike",
+    "Tandem Bike",
+    "Touring Bike"
+   ]
+  },
+  "Bicycle Wheel Size": {
+   "label": "Bicycle Wheel Size",
+   "type": "INPUT"
+  },
+  "Material#5": {
+   "label": "Material",
+   "type": "LIST",
+   "options": [
+    "Aluminum",
+    "Carbon Fiber",
+    "Chromoly",
+    "Steel",
+    "Titanium"
+   ]
+  },
+  "Decor Style": {
+   "label": "Decor Style",
+   "type": "LIST",
+   "options": [
+    "Americana",
+    "Art Deco",
+    "Bohemian",
+    "Coastal",
+    "Contemporary",
+    "Country & Cottage",
+    "Craftsman & Mission",
+    "Danish Modern",
+    "Farmhouse",
+    "Glam",
+    "Industrial",
+    "Mid-Century Modern",
+    "Modern",
+    "Old World",
+    "Rustic",
+    "Scandinavian",
+    "Shabby Chic",
+    "Southwestern",
+    "Tropical",
+    "Victorian",
+    "Vintage",
+    "Traditional"
+   ]
+  },
+  "Country of Origin": {
+   "label": "Country of Origin",
+   "type": "INPUT"
+  },
+  "Time Period": {
+   "label": "Time Period",
+   "type": "INPUT"
+  },
+  "Material#6": {
+   "label": "Material",
+   "type": "LIST",
+   "options": [
+    "Acacia",
+    "Acrylic",
+    "Alder",
+    "Aluminum",
+    "Ash",
+    "Bakelite",
+    "Bamboo",
+    "Barnwood",
+    "Beech",
+    "Birch",
+    "Brass",
+    "Bronze",
+    "Butcher Block",
+    "Cane",
+    "Carbon Steel",
+    "Cast Iron",
+    "Cedar",
+    "Cement",
+    "Ceramic",
+    "Cherry",
+    "Chestnut",
+    "Chipboard",
+    "Chrome",
+    "Concrete",
+    "Copper",
+    "Corian",
+    "Cork",
+    "Crystal",
+    "Cypress",
+    "Driftwood",
+    "EVA",
+    "Ebony",
+    "Elm",
+    "Enamel",
+    "Eucalyptus",
+    "Faux Granite",
+    "Faux Marble",
+    "Faux Wood",
+    "Fiberglass",
+    "Formica",
+    "Glass",
+    "Granite",
+    "Horn",
+    "Iron",
+    "Laminate",
+    "Latex",
+    "Lucite",
+    "MDF",
+    "Mahogany",
+    "Mango",
+    "Maple",
+    "Marble",
+    "Melamine",
+    "Mother of Pearl",
+    "Nickel",
+    "Oak",
+    "Opal",
+    "Ormolu",
+    "PVC",
+    "Particle Board",
+    "Pearl",
+    "Pecan",
+    "Pewter",
+    "Pine",
+    "Plastic",
+    "Plywood",
+    "Poplar",
+    "Porcelain",
+    "Quartz",
+    "Rattan",
+    "Reclaimed Wood",
+    "Resin",
+    "Rosewood",
+    "Rubber",
+    "Rubberwood",
+    "Rush",
+    "Seagrass",
+    "Shell",
+    "Silicone",
+    "Slate",
+    "Stained Glass",
+    "Stainless Steel",
+    "Steel",
+    "Straw",
+    "Teak",
+    "Tempered Glass",
+    "Tile",
+    "Tin",
+    "Titanium",
+    "Travertine",
+    "Walnut",
+    "Wicker",
+    "Wood",
+    "Wood Veneer",
+    "Wrought Iron",
+    "Yew",
+    "Zinc"
+   ]
+  }
+ },
+ "categories": {
+  "Tools": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand"
+   ]
+  },
+  "Furniture": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Bed Size",
+    "Bed Type",
+    "Color",
+    "Brand"
+   ]
+  },
+  "Household": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Color"
+   ]
+  },
+  "Garden": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Material",
+    "Outdoor Table Type",
+    "Shape",
+    "Color"
+   ]
+  },
+  "Appliances": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand",
+    "Juicer Type"
+   ]
+  },
+  "Video Games": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Platform",
+    "Video Game Genre",
+    "ESRB Rating",
+    "Brand"
+   ]
+  },
+  "Books, Movies & Music": {
+   "required": [
+    "Condition"
+   ],
+   "optional": []
+  },
+  "Bags & Luggage": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand",
+    "Color",
+    "Luggage Material",
+    "Material#2"
+   ]
+  },
+  "Women's clothing & shoes": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Size",
+    "Color",
+    "Brand",
+    "Material#3"
+   ]
+  },
+  "Men's clothing & shoes": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Size",
+    "Coat Style",
+    "Fit",
+    "Brand"
+   ]
+  },
+  "Jewelry & Accessories": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Bracelet Style",
+    "Gemstone",
+    "Brand",
+    "Material#4"
+   ]
+  },
+  "Health & beauty": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand#2",
+    "Hair Type",
+    "Gender"
+   ]
+  },
+  "Pet Supplies": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand",
+    "Pet Type",
+    "Pet Size",
+    "Dimensions"
+   ]
+  },
+  "Baby & kids": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand"
+   ]
+  },
+  "Toys & Games": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand#3",
+    "Age Range",
+    "Character"
+   ]
+  },
+  "Electronics & computers": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand"
+   ]
+  },
+  "Mobile phones": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Compatible Cell Phone",
+    "Watch Band Material",
+    "Watch Band Size",
+    "Color"
+   ]
+  },
+  "Bicycles": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Bicycle Type",
+    "Brand",
+    "Bicycle Wheel Size",
+    "Material#5"
+   ]
+  },
+  "Arts & Crafts": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand"
+   ]
+  },
+  "Sports & Outdoors": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand"
+   ]
+  },
+  "Auto parts": {
+   "required": [
+    "Condition"
+   ],
+   "optional": []
+  },
+  "Musical Instruments": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Brand"
+   ]
+  },
+  "Antiques & Collectibles": {
+   "required": [
+    "Condition"
+   ],
+   "optional": [
+    "Decor Style",
+    "Country of Origin",
+    "Time Period",
+    "Material#6"
+   ]
+  },
+  "Garage Sale": {
+   "required": [],
+   "optional": []
+  },
+  "Miscellaneous": {
+   "required": [
+    "Condition"
+   ],
+   "optional": []
+  }
+ }
+}

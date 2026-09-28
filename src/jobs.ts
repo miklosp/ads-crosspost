@@ -30,6 +30,8 @@ export type Job = {
 const TERMINAL: JobState[] = ["posted", "logged_in", "failed", "cancelled", "expired"];
 const SETTLED: JobState[] = [...TERMINAL, "needs_login", "ready_to_publish"]; // waitFor returns at once
 const FILE = join(DATA, "jobs.json");
+const KEEP_MS = 30 * 86_400_000; // finished jobs older than this are dropped on save
+const KEEP_MAX = 200; // and at most this many finished jobs are kept
 
 export class JobStateError extends Error {}
 
@@ -55,7 +57,11 @@ export function createEngine({ flows, browsers, now = Date.now, pace = () => 20_
   if (existsSync(FILE))
     for (const j of JSON.parse(readFileSync(FILE, "utf8")) as Job[])
       jobs.set(j.id, TERMINAL.includes(j.state) ? j : { ...j, state: "expired" });
-  const save = () => writeFileSync(FILE, JSON.stringify([...jobs.values()], null, 2));
+  const save = () => {
+    const done = [...jobs.values()].filter((j) => TERMINAL.includes(j.state)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    done.forEach((j, i) => (i >= KEEP_MAX || now() - Date.parse(j.updatedAt) > KEEP_MS) && jobs.delete(j.id));
+    writeFileSync(FILE, JSON.stringify([...jobs.values()], null, 2));
+  };
   save();
 
   const stamp = () => new Date(now()).toISOString();

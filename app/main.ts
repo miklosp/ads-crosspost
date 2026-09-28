@@ -18,19 +18,20 @@ let tray: Tray;
 let engine: UtilityProcess | undefined;
 let status = "Engine starting…";
 let quitting = false;
-let browser: string | undefined; // Chromium status until it's ready
+let browser: string | undefined; // Chromium status until it's ready, then the MCP address
 
 function startEngine() {
   const data = app.getPath("userData");
   browser = undefined;
-  engine = utilityProcess.fork(join(__dirname, "engine.cjs"), [], {
+  engine = utilityProcess.fork(join(__dirname, "engine.mjs"), [], {
     serviceName: "Ads Crosspost Engine",
-    env: { ...process.env, ADS_DATA_DIR: data, PLAYWRIGHT_BROWSERS_PATH: join(data, "browsers") },
+    env: { ...process.env, ADS_ROOT: app.getAppPath(), ADS_DATA_DIR: data, PLAYWRIGHT_BROWSERS_PATH: join(data, "browsers") },
   });
   engine.on("spawn", () => engine!.postMessage({ type: "ping" }));
   engine.on("message", (m) => {
     if (m?.type === "chromium") browser = chromiumStatus(m);
-    if (m?.type === "pong" || m?.type === "chromium") setStatus(browser ?? "Engine running");
+    if (m?.type === "mcp") browser = `Ready — MCP on ${new URL(m.url).host}`;
+    if (m?.type === "pong" || m?.type === "chromium" || m?.type === "mcp") setStatus(browser ?? "Engine running");
   });
   engine.on("exit", (code) => {
     engine = undefined;

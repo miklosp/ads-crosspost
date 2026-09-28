@@ -243,3 +243,20 @@ test("reload turns unfinished jobs into expired", async () => {
   assert.ok(e2.list().every((j) => ["posted", "logged_in", "failed", "cancelled", "expired"].includes(j.state)));
   await e.cancel(ready.id);
 });
+
+test("save keeps unfinished jobs and the newest 200 finished ones from the last 30 days", async () => {
+  const t0 = Date.parse("2026-06-01T00:00:00Z");
+  const job = (id: string, state: string, ago: number) =>
+    ({ id, kind: "post", platform: "tradera", state, createdAt: "", updatedAt: new Date(t0 - ago).toISOString() });
+  const done = Array.from({ length: 205 }, (_, i) => job(`d${i}`, "posted", i * 1000));
+  writeFileSync(join(DATA, "jobs.json"), JSON.stringify([job("old", "failed", 31 * 86_400_000), ...done]));
+  const g = gate();
+  const e = createEngine({ flows: { tradera: fakeFlow("tradera", { gate: g.wait }) }, browsers: fakeBrowsers().browsers, now: () => t0, pace: () => 0 });
+  const live = e.preparePost(slug, "tradera");
+  const ids = JSON.parse(readFileSync(join(DATA, "jobs.json"), "utf8")).map((j: { id: string }) => j.id);
+  assert.equal(ids.length, 201);
+  assert.ok(ids.includes(live.id) && ids.includes("d199") && !ids.includes("d200") && !ids.includes("old"));
+  assert.equal(e.list().length, 201);
+  await e.cancel(live.id);
+  g.open();
+});

@@ -2,11 +2,43 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
   <title>Ads Crosspost</title>
+  <style>
+    :root { color-scheme: light dark; --muted: #6b6b6b; --line: #0000001a; --accent: #0a66d8; --bad: #c62828; --good: #2e7d32; --hl: #fff4c2; }
+    @media (prefers-color-scheme: dark) { :root { --muted: #9a9a9a; --line: #ffffff1f; --accent: #5aa2ff; --bad: #ef6b6b; --good: #6cc070; --hl: #4a3f10; } }
+    body { font: 13px/1.4 system-ui, sans-serif; margin: 0; padding: 12px 16px; }
+    h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 16px 0 6px; }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    .name { font-weight: 600; min-width: 80px; }
+    .muted { color: var(--muted); }
+    .detail { flex-basis: 100%; }
+    #platforms li button { margin-left: auto; }
+    .state.failed, .needs_login, #error { color: var(--bad); }
+    .state.posted, .logged_in { color: var(--good); }
+    .state.ready_to_publish, .state.needs_login { font-weight: 600; }
+    .focused { background: var(--hl); }
+    .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .card img { display: block; width: 100%; max-height: 420px; object-fit: contain; object-position: top; margin: 8px 0; border: 1px solid var(--line); }
+    .actions { display: flex; gap: 8px; align-items: center; }
+    button { font: inherit; padding: 3px 10px; }
+    button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 5px; padding: 4px 12px; }
+    a { color: var(--accent); }
+  </style>
 </head>
-<body style="font-family: system-ui; padding: 2rem">
-  <h1>Ads Crosspost</h1>
-  <p>Running in the menu bar.</p>
+<body>
+  <h2>Status</h2>
+  <div id="status"></div>
+  <div id="error"></div>
+  <section id="review-section" hidden>
+    <h2>Review</h2>
+    <div id="review"></div>
+  </section>
+  <h2>Platforms</h2>
+  <ul id="platforms"></ul>
+  <h2>Jobs</h2>
+  <ul id="jobs"></ul>
+  <script src="dist/renderer.js"></script>
 </body>
 </html>

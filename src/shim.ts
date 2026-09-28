@@ -28,19 +28,22 @@ export const appDataDir = (env = process.env, platform = process.platform, home 
   return join(base, APP_NAME);
 };
 
-export async function runShim({ dataDir, launchApp }: { dataDir: string; launchApp?: () => void }) {
+// MCP client to the running daemon; throws if it's down
+export const daemonClient = async (dataDir: string) => {
   const conf = join(dataDir, "mcp.json");
+  if (!existsSync(conf)) throw new Error("no mcp.json");
+  const { port, token } = JSON.parse(readFileSync(conf, "utf8"));
+  const c = new Client({ name: "ads-crosspost-shim", version: "0.1.0" });
+  await c.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`),
+    { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
+  return c;
+};
+
+export async function runShim({ dataDir, launchApp }: { dataDir: string; launchApp?: () => void }) {
   let client: Client | undefined;
   let pending: Promise<Client> | undefined;
 
-  const connect = async () => {
-    if (!existsSync(conf)) throw new Error("no mcp.json");
-    const { port, token } = JSON.parse(readFileSync(conf, "utf8"));
-    const c = new Client({ name: "ads-crosspost-shim", version: "0.1.0" });
-    await c.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`),
-      { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
-    return c;
-  };
+  const connect = () => daemonClient(dataDir);
   const connectOrLaunch = async () => {
     try {
       return await connect();

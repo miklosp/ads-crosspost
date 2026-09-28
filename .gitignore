@@ -7,3 +7,5 @@ items/*/runs/
 items/
 .claude/scheduled_tasks.lock
 config.yaml
+dist/
+app/dist/

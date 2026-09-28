@@ -89,6 +89,11 @@ export const blocket: Flow = {
   version: 6,
   loginUrl: "https://www.blocket.se/",
   maxPhotos: 10, // unverified; form said "fem eller fler bilder säljer snabbare"
+  // unverified against live site
+  isLoggedIn: async (page) => {
+    await page.goto(SEL.startUrl, { waitUntil: "domcontentloaded" }); // draft is only created by the card click
+    return !/login|auth/.test(page.url());
+  },
   post: [
     {
       name: "open_form",

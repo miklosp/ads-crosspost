@@ -39,6 +39,11 @@ export const facebook: Flow = {
   version: 5,
   loginUrl: "https://www.facebook.com/marketplace/",
   maxPhotos: 10,
+  // unverified against live site
+  isLoggedIn: async (page) => {
+    await page.goto(SEL.formUrl, { waitUntil: "domcontentloaded" });
+    return !/\/login/.test(page.url());
+  },
   post: [
     {
       name: "open_form",

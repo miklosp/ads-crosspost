@@ -25,6 +25,8 @@ export type Flow = {
   maxPhotos: number;
   // Validation messages currently shown on the form; checked before submit, dry-run included.
   formErrors?: (page: Page) => Promise<string[]>;
+  // Cheap session check: navigates `page` and reports whether the profile is still logged in.
+  isLoggedIn?: (page: Page) => Promise<boolean>;
   post: Step[];
   delist: Step[];
 };

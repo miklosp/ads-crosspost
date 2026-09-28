@@ -66,6 +66,11 @@ export const tradera: Flow = {
   version: 9,
   loginUrl: "https://www.tradera.com/",
   maxPhotos: 12, // unverified
+  // unverified against live site
+  isLoggedIn: async (page) => {
+    await page.goto(SEL.listingsUrl, { waitUntil: "domcontentloaded" }); // not newUrl: that creates a draft
+    return !/\/login|\/signin/.test(page.url());
+  },
   post: [
     {
       name: "open_form",

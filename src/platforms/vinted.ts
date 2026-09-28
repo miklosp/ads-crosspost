@@ -56,6 +56,11 @@ export const vinted: Flow = {
   loginUrl: "https://www.vinted.se/",
   maxPhotos: 20,
   formErrors,
+  // unverified against live site
+  isLoggedIn: async (page) => {
+    await page.goto(SEL.formUrl, { waitUntil: "domcontentloaded" });
+    return !/\/login|\/signup|member\/signup/.test(page.url());
+  },
   post: [
     {
       name: "open_form",

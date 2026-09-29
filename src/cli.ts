@@ -2,16 +2,17 @@ import { parseArgs } from "node:util";
 import type { BrowserContext, Page } from "patchright";
 import { openBrowser } from "./browser.ts";
 import { discover } from "./discover.ts";
-import { prepare, publish, type Failed } from "./flow.ts";
+import { delist, prepare, publish, type Failed } from "./flow.ts";
 import { log } from "./log.ts";
 import { FLOWS, flowFor } from "./platforms/index.ts";
 import { FormRejected, type Flow } from "./platforms/types.ts";
-import { loadRecord, PLATFORMS, setListing } from "./record.ts";
+import { loadRecord, markSold, PLATFORMS, setListing, type PlatformName } from "./record.ts";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     platform: { type: "string", short: "p" },
+    on: { type: "string" }, // sold: the platform it sold on
     "dry-run": { type: "boolean", default: false },
     reset: { type: "boolean", default: false },
   },
@@ -55,6 +56,22 @@ async function runPost(flow: Flow, slug: string, dryRun: boolean, browser: () =>
   }
 }
 
+// exit code semantics: 0 = delisted or nothing live, 1 = failed
+async function runDelist(p: PlatformName, slug: string, status: "sold" | "delisted"): Promise<number> {
+  const browser = await openBrowser(p);
+  try {
+    const r = await delist(flowFor(p), slug, () => browser.newPage(), status);
+    if (r.kind === "failed") {
+      log(`${p} delist FAILED at step "${r.step}" — see ${r.dir}/`);
+      return 1;
+    }
+    log(r.kind === "delisted" ? `${p} ${status}` : `${p}: no live listing`);
+    return 0;
+  } finally {
+    await browser.close();
+  }
+}
+
 if (cmd === "login" && arg) {
   const flow = flowFor(arg);
   const browser = await openBrowser(flow.platform);
@@ -85,7 +102,14 @@ if (cmd === "login" && arg) {
     }
   }
   process.exit(code);
+} else if (cmd === "sold" && arg) {
+  if (values.on) flowFor(values.on); // validate before changing the record
+  let code = 0;
+  for (const p of markSold(arg)) code = Math.max(code, await runDelist(p, arg, p === values.on ? "sold" : "delisted"));
+  process.exit(code);
+} else if (cmd === "delist" && arg && values.platform) {
+  process.exit(await runDelist(flowFor(values.platform).platform, arg, "delisted"));
 } else {
-  log("usage:\n  pnpm run login <platform>\n  pnpm discover <platform>\n  pnpm post <slug>... --platform <p|all> [--dry-run] [--reset]");
+  log("usage:\n  pnpm run login <platform>\n  pnpm discover <platform>\n  pnpm post <slug>... --platform <p|all> [--dry-run] [--reset]\n  pnpm sold <slug> [--on <p>]\n  pnpm delist <slug> --platform <p>");
   process.exit(2);
 }

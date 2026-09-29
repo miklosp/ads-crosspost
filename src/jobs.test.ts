@@ -81,7 +81,7 @@ function fakeFlow(platform: PlatformName, o: { loggedIn?: () => boolean; gate?: 
       { name: "submit", run: async () => {} },
       { name: "capture_url", run: async (_p, ctx) => void (ctx.result = { url: `https://${platform}.test/ad/1` }) },
     ],
-    delist: [],
+    delist: [{ name: "mark_sold", run: async () => {} }],
   };
 }
 
@@ -281,4 +281,23 @@ test("save keeps unfinished jobs and the newest 200 finished ones from the last 
   assert.equal(e.list().length, 201);
   await e.cancel(live.id);
   g.open();
+});
+
+test("sold → item sold, every live listing delisted, the one it sold on marked sold", async () => {
+  const { browsers } = fakeBrowsers();
+  const e = createEngine({ flows: { tradera: fakeFlow("tradera"), vinted: fakeFlow("vinted") }, browsers, pace: () => 0 });
+  for (const p of ["tradera", "vinted"] as const) {
+    const j = e.preparePost(slug, p);
+    await until(() => e.get(j.id).state === "ready_to_publish");
+    e.publish(j.id);
+    await until(() => e.get(j.id).state === "posted");
+  }
+  const jobs = e.sold(slug, "vinted");
+  assert.deepEqual(jobs.map((j) => [j.kind, j.platform]), [["delist", "tradera"], ["delist", "vinted"]]);
+  for (const j of jobs) await until(() => e.get(j.id).state === "delisted");
+  const rec = loadRecord(slug);
+  assert.equal(rec.status, "sold");
+  assert.equal(rec.listings.tradera?.status, "delisted");
+  assert.equal(rec.listings.vinted?.status, "sold");
+  assert.deepEqual(e.sold(slug), []);
 });

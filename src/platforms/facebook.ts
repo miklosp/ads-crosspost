@@ -23,6 +23,13 @@ const SEL = {
   sellingUrl: "https://www.facebook.com/marketplace/you/selling",
   promoteLink: (title: string) => new RegExp(`^Promote now for ${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
   itemId: /target_id=(\d+)/, // the listing id, exposed only in the "Promote now" href
+  // delist, recorded 2026-09-29
+  sellingSearch: (title: string) => `https://www.facebook.com/marketplace/you/selling?title_search=${encodeURIComponent(title)}`,
+  markSold: (title: string) => `Mark as sold ${title}`,
+  markAvailable: (title: string) => `Mark as available ${title}`, // shown once sold
+  soldDialog: "Mark as sold", // "Did you sell this item?"
+  noAnswer: "I'd rather not answer", // true whichever site it sold on
+  soldNext: "Next",
 };
 
 const CONDITION = {
@@ -129,5 +136,21 @@ export const facebook: Flow = {
       },
     },
   ],
-  delist: [],
+  delist: [
+    {
+      name: "mark_sold",
+      run: async (page, ctx) => {
+        await page.goto(SEL.sellingSearch(ctx.title), { waitUntil: "domcontentloaded" });
+        const sold = page.getByRole("button", { name: SEL.markAvailable(ctx.title), exact: true });
+        const mark = page.getByRole("button", { name: SEL.markSold(ctx.title), exact: true });
+        await sold.or(mark).first().waitFor();
+        if (await sold.count()) return; // already sold
+        await mark.click();
+        const dlg = page.getByRole("dialog", { name: SEL.soldDialog });
+        await dlg.getByRole("radio", { name: SEL.noAnswer }).check({ force: true });
+        await dlg.getByRole("button", { name: SEL.soldNext }).click();
+        await sold.waitFor();
+      },
+    },
+  ],
 };

@@ -43,7 +43,7 @@ const flow: Flow = {
     { name: "submit", run: async () => {} },
     { name: "capture_url", run: async (_p, ctx) => void (ctx.result = { url: "https://tradera.test/ad/1" }) },
   ],
-  delist: [],
+  delist: [{ name: "mark_sold", run: async () => {} }],
 };
 
 let mcp: Awaited<ReturnType<typeof startMcpServer>>;
@@ -76,7 +76,7 @@ test("token and port persisted 0600", () => {
 test("create → prepare → ready with screenshot → publish → posted", async () => {
   const names = (await client.listTools()).tools.map((t) => t.name);
   for (const n of ["start_ad", "list_items", "get_item", "create_item", "update_item", "add_photos", "search_categories", "get_category_fields",
-    "search_options", "login", "prepare_post", "get_status", "wait_for_status", "publish", "cancel", "list_jobs"])
+    "search_options", "login", "prepare_post", "get_status", "wait_for_status", "publish", "mark_sold", "delist", "cancel", "list_jobs"])
     assert.ok(names.includes(n), n);
 
   const src = join(DATA, "inbox");
@@ -129,6 +129,15 @@ test("create → prepare → ready with screenshot → publish → posted", asyn
   assert.equal(json(r).state, "posted");
   assert.equal(loadRecord("lamp").listings.tradera?.status, "posted");
   assert.equal(json(await call("list_items"))[0].listings.tradera.status, "posted");
+
+  const tools = (await client.listTools()).tools;
+  for (const n of ["mark_sold", "delist"]) assert.equal(tools.find((t) => t.name === n)?.annotations?.destructiveHint, true, n);
+  const [d] = json(await call("mark_sold", { slug: "lamp", on: "tradera" }));
+  r = await call("wait_for_status", { job_id: d.id, max_s: 5 });
+  for (let i = 0; i < 5 && json(r).state !== "delisted"; i++) r = await call("wait_for_status", { job_id: d.id, max_s: 5 });
+  assert.equal(json(r).state, "delisted");
+  assert.equal(loadRecord("lamp").status, "sold");
+  assert.equal(loadRecord("lamp").listings.tradera?.status, "sold");
 });
 
 test("add_photos converts HEIC to upright JPEG", async () => {

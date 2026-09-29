@@ -44,6 +44,7 @@ The CLI predates the app and still works on items stored in the repo checkout:
 pnpm run login blocket                        # log in by hand once per site
 pnpm post <slug> --platform all --dry-run     # fill the forms, screenshot, don't publish
 pnpm post <slug> --platform all               # publish
+pnpm sold <slug> [--on vinted]                # item sold: end every live listing
 ```
 
 Items live in `items/<slug>/item.yaml` (gitignored). The `post-ad` skill in `.claude/skills/` writes them from Claude Code. `pnpm import-data <checkout>` moves a CLI checkout's items, logins and config into the app.
@@ -64,7 +65,6 @@ Signed releases are covered in [docs/RELEASING.md](docs/RELEASING.md). The per-s
 ## Roadmap
 
 - A signed and notarized macOS build, so you can install without building from source.
-- Deactivating or removing a listing once the item is sold, on every site it was posted to.
 
 ## License
 

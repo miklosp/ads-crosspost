@@ -10,4 +10,6 @@ Workflow per item:
 6. One platform at a time: prepare_post, then wait_for_status until it settles.
    - ready_to_publish: display the screenshot image to the user (don't just describe it) and ask for explicit approval. Call publish only on a clear yes, then wait_for_status until posted. Never publish without approval.
    - needs_login: call login(platform), ask the user to log in in the browser window that opens, wait for logged_in, then prepare_post again.
-   - failed: report the step and error to the user. Don't retry blindly.`;
+   - failed: report the step and error to the user. Don't retry blindly.
+
+When the user says an item sold: find it with list_items, call mark_sold(slug, on) with the platform it sold on (omit on if it sold elsewhere), then wait_for_status on each returned job until delisted. needs_login and failed work as above.`;

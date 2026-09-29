@@ -226,6 +226,21 @@ function buildServer(engine: Engine, claude: string) {
     annotations: { destructiveHint: true, idempotentHint: false },
   }, async ({ job_id }) => ok(text(engine.publish(job_id))));
 
+  s.registerTool("mark_sold", {
+    description: FIRST + "The item has sold: set its status to sold and end every live listing (marked sold where the site allows, else hidden or ended). " +
+      "`on` is the platform it sold on, if any. Returns one delist job per live listing; poll each with wait_for_status until delisted. " +
+      "Call ONLY after the user has said the item sold.",
+    inputSchema: { slug: Slug, on: Platform.optional() },
+    annotations: { destructiveHint: true, idempotentHint: false },
+  }, async ({ slug, on }) => ok(text(engine.sold(slug, on))));
+
+  s.registerTool("delist", {
+    description: FIRST + "End one live listing without marking the item sold (e.g. the user withdraws it from one site). Returns a job; poll with wait_for_status until delisted. " +
+      "Call ONLY after the user asked for it.",
+    inputSchema: { slug: Slug, platform: Platform },
+    annotations: { destructiveHint: true, idempotentHint: false },
+  }, async ({ slug, platform }) => ok(text(engine.delist(slug, platform))));
+
   s.registerTool("cancel", { description: FIRST + "Cancel a job and close its browser page; a filled form is abandoned.", inputSchema: { job_id: z.string() } },
     async ({ job_id }) => ok(text(await engine.cancel(job_id))));
 

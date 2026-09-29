@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "post": "node src/cli.ts post",
+    "sold": "node src/cli.ts sold",
+    "delist": "node src/cli.ts delist",
     "login": "node src/cli.ts login",
     "discover": "node src/cli.ts discover",
     "import-data": "node src/import.ts",

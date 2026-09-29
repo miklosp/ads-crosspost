@@ -14,7 +14,7 @@ const Lang = z.enum(["sv", "en", "both"]);
 const Condition = z.enum(["new_with_tags", "new", "like_new", "good", "fair", "poor"]);
 
 const Listing = z.object({
-  status: z.enum(["submitted", "posted", "failed", "delisted"]),
+  status: z.enum(["submitted", "posted", "failed", "sold", "delisted"]),
   url: z.string().optional(),
   id: z.string().optional(),
   posted_at: z.string().optional(),
@@ -115,6 +115,12 @@ export function setListing(slug: string, p: PlatformName, listing: Listing | und
   if (listing) doc.setIn(["listings", p], listing);
   else doc.deleteIn(["listings", p]);
   writeFileSync(yamlPath(slug), doc.toString());
+}
+
+// Sets the item sold; returns the platforms whose listings are still live and need delisting.
+export function markSold(slug: string): PlatformName[] {
+  const rec = updateRecord(slug, { status: "sold" });
+  return PLATFORMS.filter((p) => rec.listings[p]?.status === "posted");
 }
 
 export function createRecord(rec: Record) {

@@ -25,6 +25,10 @@ const SEL = {
   upload: "Upload",
   itemUrl: /\/items\/(\d+)/,
   itemLink: (title: string) => `a[href*="/items/"][title^="${title.replace(/"/g, '\\"')}"]`, // member page after upload; title attr = "<title>, brand: …"
+  // delist, owner view of the item page; recorded 2026-09-29. "Mark as sold" needs the buyer's Vinted name,
+  // so a sale elsewhere means hiding (reversible, unlike Delete). A Vinted checkout already shows "Sold" and no owner buttons.
+  hide: "Hide", // hides at once, no confirm dialog
+  unhide: "Unhide", // shown once hidden
 };
 
 const CONDITION = {
@@ -183,5 +187,18 @@ export const vinted: Flow = {
       },
     },
   ],
-  delist: [],
+  delist: [
+    {
+      name: "hide",
+      run: async (page, ctx) => {
+        await page.goto(ctx.record.listings.vinted!.url!, { waitUntil: "domcontentloaded" });
+        const side = page.getByRole("complementary").first();
+        await side.getByRole("heading", { level: 1 }).waitFor();
+        const hide = side.getByRole("button", { name: SEL.hide, exact: true });
+        if (!(await hide.count())) return; // hidden already, or sold through Vinted
+        await hide.click();
+        await side.getByRole("button", { name: SEL.unhide, exact: true }).waitFor();
+      },
+    },
+  ],
 };

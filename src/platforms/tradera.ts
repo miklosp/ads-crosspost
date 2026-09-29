@@ -38,6 +38,12 @@ const SEL = {
   publish: "Publicera",
   itemUrl: /\/item\/\d+\/(\d+)/,
   listingsUrl: "https://www.tradera.com/my/listings",
+  // delist, "Aktiva annonser" (listingsUrl); recorded 2026-09-29
+  listingsHeading: "Dina annonser",
+  objektnr: /^Objektnr \d+$/, // one per active row
+  more: (id: string) => `xpath=//p[normalize-space()="Objektnr ${id}"]/following::button[normalize-space()="Mer"][1]`, // the row's own "Mer"
+  moreDialog: "Fler åtgärder",
+  end: "Avsluta annons", // ends at once, no confirm dialog; Tradera has no mark-as-sold for fixed price
 };
 
 const CONDITION = {
@@ -189,5 +195,25 @@ export const tradera: Flow = {
       },
     },
   ],
-  delist: [],
+  delist: [
+    {
+      name: "end_listing",
+      run: async (page, ctx) => {
+        const id = ctx.record.listings.tradera!.id!;
+        const row = page.getByText(`Objektnr ${id}`, { exact: true });
+        const open = async () => {
+          await page.goto(SEL.listingsUrl, { waitUntil: "domcontentloaded" });
+          await page.getByRole("heading", { name: SEL.listingsHeading }).waitFor();
+          await page.getByText(SEL.objektnr).first().waitFor({ timeout: 15_000 }).catch(() => {}); // none at all when nothing is active
+        };
+        await open();
+        if (!(await row.count())) return; // not active: sold, expired or ended by hand
+        await page.locator(SEL.more(id)).click();
+        await page.getByRole("dialog", { name: SEL.moreDialog }).getByRole("button", { name: SEL.end, exact: true }).click();
+        await page.waitForTimeout(2_000);
+        await open();
+        if (await row.count()) throw new Error(`Objektnr ${id} still under Aktiva annonser`);
+      },
+    },
+  ],
 };

@@ -28,5 +28,7 @@ export type Flow = {
   // Cheap session check: navigates `page` and reports whether the profile is still logged in.
   isLoggedIn?: (page: Page) => Promise<boolean>;
   post: Step[];
+  // Ends the live listing at ctx.record.listings[platform] (url/id): marks it sold where the site can, else deletes it.
+  // Returns early if the site already ended it (sold through the site's own checkout).
   delist: Step[];
 };

@@ -5,16 +5,16 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { Page } from "patchright";
 import type { browserManager } from "./browsers.ts";
-import { prepare, publish, type Handle } from "./flow.ts";
+import { delist, prepare, publish, type Handle } from "./flow.ts";
 import type { Flow } from "./platforms/types.ts";
-import { DATA, type PlatformName } from "./record.ts";
+import { DATA, markSold, type PlatformName } from "./record.ts";
 
 export type JobState =
   | "queued" | "running" | "needs_login" | "ready_to_publish" | "publishing"
-  | "posted" | "logged_in" | "failed" | "cancelled" | "expired";
+  | "posted" | "logged_in" | "delisted" | "failed" | "cancelled" | "expired";
 export type Job = {
   id: string;
-  kind: "login" | "post";
+  kind: "login" | "post" | "delist";
   slug?: string;
   platform: PlatformName;
   state: JobState;
@@ -27,7 +27,7 @@ export type Job = {
   updatedAt: string;
 };
 
-const TERMINAL: JobState[] = ["posted", "logged_in", "failed", "cancelled", "expired"];
+const TERMINAL: JobState[] = ["posted", "logged_in", "delisted", "failed", "cancelled", "expired"];
 const SETTLED: JobState[] = [...TERMINAL, "needs_login", "ready_to_publish"]; // waitFor returns at once
 const FILE = join(DATA, "jobs.json");
 const KEEP_MS = 30 * 86_400_000; // finished jobs older than this are dropped on save
@@ -162,19 +162,24 @@ export function createEngine({ flows, browsers, now = Date.now, pace = () => 20_
     return { ...job };
   }
 
+  // Waits out the platform's pacing, then checks the session. false: the job was cancelled or needs a login.
+  async function start(job: Job, flow: Flow) {
+    const last = lastEnd.get(flow.platform);
+    if (last !== undefined) await sleep(Math.max(0, last + pace() - now()));
+    if (job.state === "cancelled") return false;
+    update(job, { state: "running" });
+    if (!flow.isLoggedIn) return true;
+    const ok = await flow.isLoggedIn(await newPage(job));
+    await closePage(job.id);
+    if (!ok) update(job, { state: "needs_login" });
+    return ok;
+  }
+
   function preparePost(slug: string, platform: PlatformName) {
     const flow = flowOf(platform);
     const job = create("post", platform, slug);
     enqueue(job, async () => {
-      const last = lastEnd.get(platform);
-      if (last !== undefined) await sleep(Math.max(0, last + pace() - now()));
-      if (job.state === "cancelled") return;
-      update(job, { state: "running" });
-      if (flow.isLoggedIn) {
-        const ok = await flow.isLoggedIn(await newPage(job));
-        await closePage(job.id);
-        if (!ok) return update(job, { state: "needs_login" });
-      }
+      if (!(await start(job, flow))) return;
       const r = await prepare(flow, slug, () => newPage(job));
       if (r.kind === "ready") {
         handles.set(job.id, r.handle); // dropped by closePage in enqueue if the job was cancelled meanwhile
@@ -184,6 +189,23 @@ export function createEngine({ flows, browsers, now = Date.now, pace = () => 20_
       else update(job, { state: "failed", step: r.step, error: r.error instanceof Error ? r.error.message : String(r.error), dir: r.dir });
     });
     return { ...job };
+  }
+
+  function delistJob(slug: string, platform: PlatformName, status: "sold" | "delisted" = "delisted") {
+    const flow = flowOf(platform);
+    const job = create("delist", platform, slug);
+    enqueue(job, async () => {
+      if (!(await start(job, flow))) return;
+      const r = await delist(flow, slug, () => newPage(job), status);
+      if (r.kind === "failed") update(job, { state: "failed", step: r.step, error: r.error instanceof Error ? r.error.message : String(r.error), dir: r.dir });
+      else update(job, { state: "delisted" });
+    });
+    return { ...job };
+  }
+
+  // Marks the item sold and queues a delist job for every live listing; `on` is the platform it sold on.
+  function sold(slug: string, on?: PlatformName) {
+    return markSold(slug).map((p) => delistJob(slug, p, p === on ? "sold" : "delisted"));
   }
 
   function publishJob(id: string) {
@@ -228,6 +250,8 @@ export function createEngine({ flows, browsers, now = Date.now, pace = () => 20_
     login,
     preparePost,
     publish: publishJob,
+    delist: delistJob,
+    sold,
     cancel,
     get: (id: string) => ({ ...must(id) }),
     list: () => [...jobs.values()].map((j) => ({ ...j })),

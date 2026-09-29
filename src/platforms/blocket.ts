@@ -32,6 +32,11 @@ const SEL = {
   publish: "Publicera annonsen",
   receiptUrl: /\/ad-receipt\?.*adId=(\d+)/, // lands here after publish; ad is then in review
   adUrl: (id: string) => `https://www.blocket.se/${id}`, // public URL once approved
+  // delist, recorded 2026-09-29
+  manageUrl: (id: string) => `https://www.blocket.se/my-items/details/${id}`, // "Hantera annons", owner view
+  manageHeading: "Hantera annons",
+  markSold: "Markera som såld", // marks it at once, then goes to an optional buyer-review picker
+  unmarkSold: "Ta bort såld-märke", // shown once the ad is marked sold
 };
 
 const CONDITION = {
@@ -188,5 +193,19 @@ export const blocket: Flow = {
       },
     },
   ],
-  delist: [],
+  delist: [
+    {
+      name: "mark_sold",
+      run: async (page, ctx) => {
+        const manage = SEL.manageUrl(ctx.record.listings.blocket!.id!);
+        await page.goto(manage, { waitUntil: "commit" });
+        await page.getByRole("heading", { name: SEL.manageHeading }).waitFor();
+        if (await page.getByRole("button", { name: SEL.unmarkSold }).count()) return; // already sold
+        await page.getByRole("button", { name: SEL.markSold }).click();
+        await page.waitForURL((u) => !u.pathname.startsWith("/my-items/details/"));
+        await page.goto(manage, { waitUntil: "commit" });
+        await page.getByRole("button", { name: SEL.unmarkSold }).waitFor();
+      },
+    },
+  ],
 };

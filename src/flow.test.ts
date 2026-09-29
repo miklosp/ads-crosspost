@@ -8,7 +8,7 @@ import sharp from "sharp";
 import { FormRejected, type Flow, type Step } from "./platforms/types.ts";
 
 process.env.ADS_DATA_DIR = mkdtempSync(join(tmpdir(), "ads-flow-"));
-const { prepare, publish } = await import("./flow.ts");
+const { delist, prepare, publish } = await import("./flow.ts");
 const { itemDir, loadRecord } = await import("./record.ts");
 
 const slug = "lamp";
@@ -56,7 +56,7 @@ function fakeFlow(throwAt?: string, err: Error = new Error("boom"), formErrors: 
     maxPhotos: 1,
     formErrors: async () => formErrors,
     post: ["fill", "submit", "capture_url"].map(step),
-    delist: [],
+    delist: ["mark_sold"].map(step),
   };
   return { flow, calls };
 }
@@ -131,4 +131,28 @@ test("FormRejected after submit → failed", async () => {
   assert.equal(posted.kind, "failed");
   assert.equal(listing()?.status, "failed");
   assert.equal(listing()?.failed_step, "submit");
+});
+
+test("delist a posted listing → sold, url kept", async () => {
+  const { flow, calls } = fakeFlow();
+  const r = await prepare(flow, slug, newPage);
+  if (r.kind !== "ready") return assert.fail(r.kind);
+  await publish(r.handle);
+  assert.deepEqual(await delist(flow, slug, newPage, "sold"), { kind: "delisted" });
+  assert.deepEqual(calls.slice(-1), ["mark_sold"]);
+  assert.equal(listing()?.status, "sold");
+  assert.equal(listing()?.url, "https://example.test/ad/1");
+  assert.deepEqual(await delist(flow, slug, async () => assert.fail("page opened")), { kind: "not_posted" });
+});
+
+test("delist failure keeps the listing posted, with dump", async () => {
+  const { flow } = fakeFlow("mark_sold");
+  const r = await prepare(flow, slug, newPage);
+  if (r.kind !== "ready") return assert.fail(r.kind);
+  await publish(r.handle);
+  const d = await delist(flow, slug, newPage);
+  if (d.kind !== "failed") return assert.fail(d.kind);
+  assert.equal(d.step, "mark_sold");
+  assert.ok(existsSync(join(d.dir, "error.txt")));
+  assert.equal(listing()?.status, "posted");
 });

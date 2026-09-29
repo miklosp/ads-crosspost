@@ -5,7 +5,7 @@ replaying recorded browser flows. The LLM writes ad text and repairs broken flow
 post.
 
 Status 2026-09-26: all four `post` flows are recorded and in use (Blocket v4, Tradera v6, Vinted v5,
-Facebook v3). `delist`, `sold` and the `repair-flow` skill are not built. Per-category form fields for
+Facebook v3). `sold`/`delist` exist for all four sites (§8). The `repair-flow` skill is not built. Per-category form fields for
 every site are snapshotted in `src/platforms/<p>.fields.json` (see [FIELDS.md](FIELDS.md)).
 
 ## 1. Language: TypeScript
@@ -36,7 +36,7 @@ ads-crosspost/
       runs/<platform>/<ts>/   # failure artifacts: screenshot, aria.txt, error.txt (gitignored)
   sessions/<platform>/        # Chrome user-data-dir per platform (gitignored, already)
   src/
-    cli.ts                    # login | discover | post [--dry-run] [--reset]   (sold/delist: not built)
+    cli.ts                    # login | discover | post [--dry-run] [--reset] | sold [--on <p>] | delist --platform <p>
     config.ts                 # loads config.yaml
     record.ts                 # load/validate/write item.yaml (only writer)
     photos.ts                 # resize into items/<slug>/out/<platform>/
@@ -120,7 +120,7 @@ platforms:                         # per-platform inputs; a key present = post t
 
 listings:                          # written ONLY by uploaders
   blocket:
-    status: posted                 # submitted | posted | failed | delisted
+    status: posted                 # submitted | posted | failed | sold | delisted
     url: https://www.blocket.se/123456
     id: "123456"
     posted_at: 2026-09-11T10:12:00Z
@@ -251,16 +251,24 @@ count cap, all (unverified) — to be confirmed during recording and hardcoded p
 
 If the record has more photos than the cap, take the first N and warn.
 
-## 8. Status tracking — later, design only
+## 8. Sold and delist
 
-- `pnpm sold <slug> --on tradera`: sets `status: sold`, `listings.tradera.status: sold`, then runs
-  the `delist` flow for every other platform whose status is `posted`. Each `delist` is a second
-  recorded step list in the same platform file (`open_my_ads`, `find_listing` by stored id/url,
-  `remove`, `confirm`) with the same failure artifacts.
-- `pnpm delist <slug> --platform <p>`: manual single delist.
+- `pnpm sold <slug> [--on <p>]` (MCP `mark_sold`): sets `status: sold`, then runs the `delist` flow
+  for every platform whose listing is `posted`, including `<p>`: a Blocket or Facebook sale happens
+  in chat, so that listing is still live. Each delist returns early when the site already ended the
+  listing (Vinted/Tradera checkout, marked sold by hand, expired). The listing then becomes `sold` on
+  `<p>` and `delisted` elsewhere; a failed delist leaves it `posted`, so a rerun retries.
+- `pnpm delist <slug> --platform <p>` (MCP `delist`): one listing, item status untouched.
+- What each site's delist does (recorded 2026-09-29):
+
+| site | action | already-ended marker |
+|---|---|---|
+| Blocket | "Markera som såld" on `/my-items/details/<id>` (then skips the buyer-review picker) | "Ta bort såld-märke" |
+| Facebook | "Mark as sold <title>" on Your listings, answers "I'd rather not answer" | "Mark as available <title>" |
+| Tradera | "Mer" → "Avsluta annons" on the row with the listing's Objektnr under Aktiva annonser; no confirm; no mark-sold for fixed price | row absent from Aktiva annonser |
+| Vinted | "Hide" on the item page (reversible); no confirm; its "Mark as sold" needs the buyer's Vinted name | "Unhide", or "Sold" with no owner buttons |
+
 - No polling, no cron, no "did it sell" detection. The human knows when it sold.
-- Tradera auctions end on their own; `sold` on Tradera is the only case where the platform, not
-  the human, decides — still triggered manually.
 
 ## 9. Open questions
 
